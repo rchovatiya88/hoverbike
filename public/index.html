@@ -8,6 +8,9 @@
     <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/yuka@0.7.8/build/yuka.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.4/dist/aframe-extras.min.js"></script>
+    <!-- Draco loader scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/loaders/DRACOLoader.js"></script>
+    <script src="../js/draco-decoder.js"></script>
     <!-- Custom components -->
     <script src="components/utils.js"></script>
     <script src="components/hitbox-component.js"></script>
@@ -157,7 +160,7 @@
         <a-plane ground position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#7BC8A4"></a-plane>
 
         <!-- Player -->
-        <a-entity id="player" gltf-model="#jetbike-model" player-component="speed: 5; health: 100" position="0 5 0">
+        <a-entity id="player" draco-model="#jetbike-model" player-component="speed: 5; health: 100" position="0 5 0">
             <a-camera id="camera" look-controls="reverseMouseDrag: false; touchEnabled: true; pointerLockEnabled: true; magicWindowTrackingEnabled: false" wasd-controls="enabled: false" position="0 1.5 0">
                 <a-entity id="weapon" weapon-component="damage: 25; cooldown: 0.5; automatic: true" position="0.2 -0.2 -0.3"></a-entity>
             </a-camera>
