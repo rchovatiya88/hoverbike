@@ -589,170 +589,176 @@ if (!AFRAME.components['enemy-component']) {
       }
     },
     tick: function(time, deltaTime) {
-    try {
-      if (!this.isAlive) return;
+      try {
+        // Skip processing if disabled/dead
+        if (!this.isActive || this.isDead) return;
 
-      // Check if game is still running
-      const gameManager = document.querySelector('[game-manager]');
-      if (!gameManager || !gameManager.components['game-manager'] || !gameManager.components['game-manager'].gameStarted) return;
-
-      // Ensure we have needed references
-      if (!this.playerEntity) {
-        this.playerEntity = document.getElementById('player');
-        if (!this.playerEntity) return;
-      }
-      
-      // Ensure vehicle has valid userData and target
-      if (this.vehicle && (!this.vehicle.userData || !this.vehicle.userData.target)) {
-        this.vehicle.userData = this.vehicle.userData || {};
-        this.vehicle.userData.target = this.playerEntity;
-        this.vehicle.userData.el = this.el;
-      }
-
-      // Simple AI if YUKA isn't working - move toward player
-      if (!this.entityManager || !this.vehicle) {
-        // Get player position
-        const playerPos = this.playerEntity.object3D.position;
-        const enemyPos = this.el.object3D.position;
-
-        // Calculate direction to player
-        const direction = new THREE.Vector3()
-          .subVectors(playerPos, enemyPos)
-          .normalize();
-
-        // Calculate distance to player
-        const distance = enemyPos.distanceTo(playerPos);
-
-        // Simple movement logic
-        if (distance > 3) {
-          // Move toward player
-          const moveSpeed = (this.data.speed || 2) * (deltaTime / 1000);
-          this.el.object3D.position.add(direction.multiplyScalar(moveSpeed));
-
-          // Make enemy look at player
-          this.el.object3D.lookAt(playerPos);
-        }
-      } else {
-        // YUKA AI update
-        const dt = deltaTime / 1000;
-
-        if (this.time) {
-          this.time.update(dt);
-        }
-
-        // Handle YUKA entity update safely
-        try {
-          // Get reference to the game manager's entity manager
-          const gameManager = document.querySelector('[game-manager]');
-          if (gameManager && gameManager.components && 
-              gameManager.components['game-manager'] && 
-              gameManager.components['game-manager'].entityManager) {
-            // The game manager will update all entities
-            // No need to update here
-          } else if (this.entityManager) {
-            // Only update local entity manager if needed
-            this.entityManager.update(dt);
+        // Find player if not already set
+        if (!this.playerEntity) {
+          this.playerEntity = document.getElementById('player');
+          if (!this.playerEntity) {
+            // Player not found, retry next tick
+            return;
           }
-        } catch (yukaError) {
-          console.warn('YUKA update error:', yukaError);
-          // Fallback to simple movement if YUKA fails
         }
 
-        // Update the entity's position based on the AI vehicle
-        if (this.vehicle) {
-          // Set the target for seeking behavior to be the player's position
+        // Verify player entity exists and is valid
+        if (!this.playerEntity.object3D) {
+          console.warn("Player entity has no object3D, skipping enemy tick");
+          return;
+        }
+
+        // Update vehicle target data every tick to prevent stale references
+        if (this.vehicle && this.vehicle.userData) {
+          this.vehicle.userData.target = this.playerEntity;
+          this.vehicle.userData.targetPosition = new THREE.Vector3();
+          this.playerEntity.object3D.getWorldPosition(this.vehicle.userData.targetPosition);
+        }
+
+        // Simple AI if YUKA isn't working - move toward player
+        if (!this.entityManager || !this.vehicle) {
+          // Get player position
           const playerPos = this.playerEntity.object3D.position;
-          this.seekBehavior.target.set(playerPos.x, playerPos.y, playerPos.z);
+          const enemyPos = this.el.object3D.position;
+
+          // Calculate direction to player
+          const direction = new THREE.Vector3()
+            .subVectors(playerPos, enemyPos)
+            .normalize();
 
           // Calculate distance to player
-          const distance = this.el.object3D.position.distanceTo(playerPos);
+          const distance = enemyPos.distanceTo(playerPos);
 
-          // If close enough to player, switch to flee behavior
-          if (distance < 5) {
-            this.seekBehavior.weight = 0;
-            this.fleeBehavior.weight = 1;
-          } else {
-            this.seekBehavior.weight = 1;
-            this.fleeBehavior.weight = 0;
+          // Simple movement logic
+          if (distance > 3) {
+            // Move toward player
+            const moveSpeed = (this.data.speed || 2) * (deltaTime / 1000);
+            this.el.object3D.position.add(direction.multiplyScalar(moveSpeed));
+
+            // Make enemy look at player
+            this.el.object3D.lookAt(playerPos);
+          }
+        } else {
+          // YUKA AI update
+          const dt = deltaTime / 1000;
+
+          if (this.time) {
+            this.time.update(dt);
           }
 
-          // Copy position from YUKA vehicle to A-Frame entity
-          this.el.object3D.position.copy(this.vehicle.position);
+          // Handle YUKA entity update safely
+          try {
+            // Get reference to the game manager's entity manager
+            const gameManager = document.querySelector('[game-manager]');
+            if (gameManager && gameManager.components && 
+                gameManager.components['game-manager'] && 
+                gameManager.components['game-manager'].entityManager) {
+              // The game manager will update all entities
+              // No need to update here
+            } else if (this.entityManager) {
+              // Only update local entity manager if needed
+              this.entityManager.update(dt);
+            }
+          } catch (yukaError) {
+            console.warn('YUKA update error:', yukaError);
+            // Fallback to simple movement if YUKA fails
+          }
 
-          // Copy rotation (convert YUKA rotation to A-Frame)
-          if (this.vehicle.rotation) {
-            this.el.object3D.quaternion.copy(this.vehicle.rotation);
+          // Update the entity's position based on the AI vehicle
+          if (this.vehicle) {
+            // Set the target for seeking behavior to be the player's position
+            const playerPos = this.playerEntity.object3D.position;
+            this.seekBehavior.target.set(playerPos.x, playerPos.y, playerPos.z);
+
+            // Calculate distance to player
+            const distance = this.el.object3D.position.distanceTo(playerPos);
+
+            // If close enough to player, switch to flee behavior
+            if (distance < 5) {
+              this.seekBehavior.weight = 0;
+              this.fleeBehavior.weight = 1;
+            } else {
+              this.seekBehavior.weight = 1;
+              this.fleeBehavior.weight = 0;
+            }
+
+            // Copy position from YUKA vehicle to A-Frame entity
+            this.el.object3D.position.copy(this.vehicle.position);
+
+            // Copy rotation (convert YUKA rotation to A-Frame)
+            if (this.vehicle.rotation) {
+              this.el.object3D.quaternion.copy(this.vehicle.rotation);
+            }
           }
         }
-      }
 
-      // Update hitbox for collision detection
-      this.updateHitbox();
+        // Update hitbox for collision detection
+        this.updateHitbox();
 
-      if (this.vehicleSound) {
-        try {
-          // Completely disable audio to prevent errors
-          this.audioEnabled = false;
-          // Skip all audio processing
-          return;
-        } catch (error) {
-          console.error('Error updating enemy audio:', error);
+        if (this.vehicleSound) {
+          try {
+            // Completely disable audio to prevent errors
+            this.audioEnabled = false;
+            // Skip all audio processing
+            return;
+          } catch (error) {
+            console.error('Error updating enemy audio:', error);
+          }
         }
+      } catch (error) {
+        console.error('Error in enemy tick:', error);
       }
-    } catch (error) {
-      console.error('Error in enemy tick:', error);
-    }
-  },
+    },
     updateHitbox: function() {
-    try {
-      const mesh = this.el.getObject3D('mesh');
+      try {
+        const mesh = this.el.getObject3D('mesh');
 
-      if (!mesh) {
-        // If no mesh exists yet, use a default hitbox
-        const position = new THREE.Vector3();
-        this.el.object3D.getWorldPosition(position);
+        if (!mesh) {
+          // If no mesh exists yet, use a default hitbox
+          const position = new THREE.Vector3();
+          this.el.object3D.getWorldPosition(position);
 
-        this.hitboxCenter = position;
-        this.hitboxSize = new THREE.Vector3(1, 1, 1);
+          this.hitboxCenter = position;
+          this.hitboxSize = new THREE.Vector3(1, 1, 1);
 
-        // Create a simple box hitbox around the entity position
+          // Create a simple box hitbox around the entity position
+          this.hitboxHelper.setFromCenterAndSize(
+            this.hitboxCenter,
+            this.hitboxSize.clone().multiplyScalar(this.data.hitboxScale || 1.0)
+          );
+          return;
+        }
+
+        // Get the mesh's bounding box
+        const boundingBox = new THREE.Box3().setFromObject(mesh);
+
+        // Check that the bounding box is valid (not empty)
+        if (boundingBox.isEmpty()) {
+          // Use a default size if bounding box is invalid
+          this.hitboxSize = new THREE.Vector3(1, 1, 1);
+
+          const position = new THREE.Vector3();
+          this.el.object3D.getWorldPosition(position);
+          this.hitboxCenter = position;
+        } else {
+          // Get size and center from valid bounding box
+          const size = boundingBox.getSize(new THREE.Vector3());
+          const center = boundingBox.getCenter(new THREE.Vector3());
+
+          // Update hitbox with mesh bounds
+          this.hitboxSize = size;
+          this.hitboxCenter = center;
+        }
+
+        // Update the helper box
         this.hitboxHelper.setFromCenterAndSize(
           this.hitboxCenter,
           this.hitboxSize.clone().multiplyScalar(this.data.hitboxScale || 1.0)
         );
-        return;
+      } catch (error) {
+        console.error('Error updating hitbox:', error);
       }
-
-      // Get the mesh's bounding box
-      const boundingBox = new THREE.Box3().setFromObject(mesh);
-
-      // Check that the bounding box is valid (not empty)
-      if (boundingBox.isEmpty()) {
-        // Use a default size if bounding box is invalid
-        this.hitboxSize = new THREE.Vector3(1, 1, 1);
-
-        const position = new THREE.Vector3();
-        this.el.object3D.getWorldPosition(position);
-        this.hitboxCenter = position;
-      } else {
-        // Get size and center from valid bounding box
-        const size = boundingBox.getSize(new THREE.Vector3());
-        const center = boundingBox.getCenter(new THREE.Vector3());
-
-        // Update hitbox with mesh bounds
-        this.hitboxSize = size;
-        this.hitboxCenter = center;
-      }
-
-      // Update the helper box
-      this.hitboxHelper.setFromCenterAndSize(
-        this.hitboxCenter,
-        this.hitboxSize.clone().multiplyScalar(this.data.hitboxScale || 1.0)
-      );
-    } catch (error) {
-      console.error('Error updating hitbox:', error);
-    }
-  },
+    },
     remove: function() {
       try {
         const gameManager = document.querySelector('[game-manager]');

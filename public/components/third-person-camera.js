@@ -62,39 +62,53 @@ AFRAME.registerComponent('third-person-camera', {
   updateCameraPosition: function (delta) {
     if (!this.data.target || !this.cameraEl) return;
     
-    const dt = delta / 1000;
-    // Increase minimum smoothing for better stability
-    const smoothing = Math.max(0.1, Math.min(this.data.smoothing * dt, 0.9));
-    
-    // Cache frequently accessed properties
-    const distance = this.data.distance;
-    const height = this.data.height;
-    
-    // Get target position and rotation
-    this.data.target.object3D.getWorldPosition(this.targetPosition);
-    this.targetRotation.y = this.data.target.object3D.rotation.y;
-    
-    // Calculate look target with height offset
-    this.lookTarget.copy(this.targetPosition);
-    this.lookTarget.y += this.data.lookAtHeight;
-    
-    // Calculate ideal camera position relative to target
-    // Use sin/cos for circular orbit around target
-    this.cameraPosition.x = this.targetPosition.x - Math.sin(this.targetRotation.y) * distance;
-    this.cameraPosition.z = this.targetPosition.z - Math.cos(this.targetRotation.y) * distance;
-    this.cameraPosition.y = this.targetPosition.y + height;
-    
-    // Use smoother movement for the camera rig
-    this.el.object3D.position.lerp(this.targetPosition, smoothing);
-    
-    // Calculate camera offset from target (relative to rig)
-    const cameraOffset = new THREE.Vector3().subVectors(this.cameraPosition, this.targetPosition);
-    
-    // Apply the offset to camera with smoothing
-    this.cameraEl.object3D.position.lerp(cameraOffset, smoothing);
-    
-    // Make camera look at the target
-    const lookPos = new THREE.Vector3().copy(this.lookTarget);
-    this.cameraEl.object3D.lookAt(lookPos);
+    try {
+      // Ensure delta is valid for smoothing calculations
+      const dt = delta ? delta / 1000 : 0.016; // Default to 60fps if delta is missing
+      
+      // Calculate adaptive smoothing - slower for stability, faster for responsiveness
+      const smoothing = Math.max(0.05, Math.min(this.data.smoothing * dt, 0.2));
+      
+      // Cache frequently accessed properties
+      const distance = this.data.distance;
+      const height = this.data.height;
+      
+      // Get target position and rotation
+      this.data.target.object3D.getWorldPosition(this.targetPosition);
+      
+      // Make sure we have a valid position
+      if (isNaN(this.targetPosition.x) || isNaN(this.targetPosition.y) || isNaN(this.targetPosition.z)) {
+        console.warn("Invalid target position detected");
+        return;
+      }
+      
+      // Get target rotation
+      this.targetRotation.y = this.data.target.object3D.rotation.y;
+      
+      // Calculate look target with height offset for better view
+      this.lookTarget.copy(this.targetPosition);
+      this.lookTarget.y += this.data.lookAtHeight;
+      
+      // Calculate ideal camera position in orbit around target
+      // Using sin/cos for circular orbit around target based on target rotation
+      this.cameraPosition.x = this.targetPosition.x - Math.sin(this.targetRotation.y) * distance;
+      this.cameraPosition.z = this.targetPosition.z - Math.cos(this.targetRotation.y) * distance;
+      this.cameraPosition.y = this.targetPosition.y + height;
+      
+      // First move the rig to follow the target position with smoothing
+      this.el.object3D.position.lerp(this.targetPosition, smoothing);
+      
+      // Calculate camera offset from rig center
+      const cameraOffset = new THREE.Vector3().subVectors(this.cameraPosition, this.targetPosition);
+      
+      // Apply the offset to camera with smoothing
+      this.cameraEl.object3D.position.lerp(cameraOffset, smoothing);
+      
+      // Make camera look at the target
+      this.cameraEl.object3D.lookAt(this.lookTarget);
+
+    } catch (error) {
+      console.error("Error updating camera position:", error);
+    }
   }
 });

@@ -40,18 +40,27 @@ if (!AFRAME.components['weapon-component']) {
     try {
       // Create a THREE.Group for the weapon
       this.weaponGroup = new THREE.Group();
-      this.el.object3D.add(this.weaponGroup);
-
+      
       // Create weapon parts with separate method for better organization
       this.createWeaponParts();
-
+      
       // Position the complete weapon group
       this.weaponGroup.position.set(0.4, -0.2, -0.5);
-
-      // Create a simple reference entity for A-Frame compatibility
-      const weaponEntity = document.createElement('a-entity');
-      this.el.appendChild(weaponEntity);
-      this.weaponEntity = weaponEntity;
+      
+      // Add the weapon group to the entity's object3D
+      if (this.el && this.el.object3D) {
+        this.el.object3D.add(this.weaponGroup);
+        
+        // Create a simple reference entity for A-Frame compatibility
+        const weaponEntity = document.createElement('a-entity');
+        this.el.appendChild(weaponEntity);
+        this.weaponEntity = weaponEntity;
+        
+        console.log("Weapon model created successfully");
+      } else {
+        console.error("Entity or object3D is undefined");
+        this.createFallbackWeapon();
+      }
     } catch (error) {
       console.error('Error creating weapon model:', error);
       this.createFallbackWeapon();
@@ -59,21 +68,36 @@ if (!AFRAME.components['weapon-component']) {
   },
 
   createWeaponParts: function() {
-    // Create barrel
-    const barrelGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.5);
-    const barrelMaterial = new THREE.MeshStandardMaterial({color: 0x333333});
-    const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
-    barrel.position.set(0, 0, -0.25);
+    try {
+      // Create barrel
+      const barrelGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.5);
+      const barrelMaterial = new THREE.MeshStandardMaterial({color: 0x333333});
+      const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
+      barrel.position.set(0, 0, -0.25);
 
-    // Create body
-    const bodyGeometry = new THREE.BoxGeometry(0.12, 0.15, 0.2);
-    const bodyMaterial = new THREE.MeshStandardMaterial({color: 0x666666});
-    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.position.set(0, -0.05, 0);
+      // Create body
+      const bodyGeometry = new THREE.BoxGeometry(0.12, 0.15, 0.2);
+      const bodyMaterial = new THREE.MeshStandardMaterial({color: 0x666666});
+      const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+      body.position.set(0, -0.05, 0);
 
-    // Add parts to weapon group
-    this.weaponGroup.add(barrel);
-    this.weaponGroup.add(body);
+      // Create muzzle placeholder (for flash positioning)
+      const muzzlePlaceholderGeometry = new THREE.BoxGeometry(0.05, 0.05, 0.05);
+      const muzzlePlaceholderMaterial = new THREE.MeshBasicMaterial({
+        color: 0x666666,
+        transparent: true,
+        opacity: 0
+      });
+      const muzzlePlaceholder = new THREE.Mesh(muzzlePlaceholderGeometry, muzzlePlaceholderMaterial);
+      muzzlePlaceholder.position.set(0, 0, -0.55);
+      
+      // Add parts to weapon group
+      this.weaponGroup.add(barrel);
+      this.weaponGroup.add(body);
+      this.weaponGroup.add(muzzlePlaceholder);
+    } catch (error) {
+      console.error('Error creating weapon parts:', error);
+    }
   },
 
   createFallbackWeapon: function() {
@@ -92,26 +116,35 @@ if (!AFRAME.components['weapon-component']) {
   },
 
     createMuzzleFlash: function () {
-      if (!this.weaponGroup) {
-        console.warn('Cannot create muzzle flash: weapon group not initialized');
-        return;
+      try {
+        if (!this.weaponGroup) {
+          console.warn('Cannot create muzzle flash: weapon group not initialized');
+          return;
+        }
+
+        // Create muzzle flash
+        const flashGeometry = new THREE.PlaneGeometry(0.2, 0.2);
+        const flashMaterial = new THREE.MeshBasicMaterial({
+          color: 0xffff00,
+          transparent: true,
+          opacity: 1,
+          side: THREE.DoubleSide,
+          emissive: 0xffff00,
+          emissiveIntensity: 2
+        });
+        
+        this.muzzleFlash = new THREE.Mesh(flashGeometry, flashMaterial);
+        this.muzzleFlash.position.set(0, 0, -0.55);
+        this.muzzleFlash.rotation.y = Math.PI / 2;
+        this.muzzleFlash.visible = false;
+
+        // Add muzzle flash to weapon group
+        this.weaponGroup.add(this.muzzleFlash);
+        
+        console.log("Muzzle flash created successfully");
+      } catch (error) {
+        console.error('Error creating muzzle flash:', error);
       }
-
-      // Create muzzle flash
-      const flashGeometry = new THREE.PlaneGeometry(0.2, 0.2);
-      const flashMaterial = new THREE.MeshBasicMaterial({
-        color: 0xffff00,
-        transparent: true,
-        opacity: 0,
-        side: THREE.DoubleSide,
-      });
-      this.muzzleFlash = new THREE.Mesh(flashGeometry, flashMaterial);
-      this.muzzleFlash.position.set(0, 0, -0.55);
-      this.muzzleFlash.rotation.y = Math.PI / 2;
-      this.muzzleFlash.visible = false;
-
-      // Add muzzle flash to weapon group
-      this.weaponGroup.add(this.muzzleFlash);
     },
 
     setupSound: function () {
