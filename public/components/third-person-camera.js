@@ -1,55 +1,76 @@
 
-/**
- * Third-person camera component that follows the player entity
- */
-if (!AFRAME.components['third-person-camera']) {
-  AFRAME.registerComponent('third-person-camera', {
+/* global AFRAME, THREE */
+
+AFRAME.registerComponent('third-person-camera', {
   schema: {
-    target: { type: 'selector', default: '#player' },
-    distance: { type: 'number', default: 6 },
-    height: { type: 'number', default: 3 },
-    lookAtHeight: { type: 'number', default: 1.5 },
-    rotationSpeed: { type: 'number', default: 10 },
+    target: { type: 'selector' },
+    distance: { type: 'number', default: 5 },
+    height: { type: 'number', default: 2 },
+    lookAtHeight: { type: 'number', default: 1 },
     smoothing: { type: 'number', default: 10 }
   },
 
   init: function () {
-    this.cameraPosition = new THREE.Vector3();
-    this.targetPosition = new THREE.Vector3();
-    this.targetRotation = new THREE.Euler();
+    // Make sure we have access to the camera element
+    this.cameraEl = this.el.querySelector('a-camera');
+    if (!this.cameraEl) {
+      this.cameraEl = this.el.querySelector('[camera]');
+    }
     
-    // Create a look target offset above the player
+    if (!this.cameraEl) {
+      console.error('No camera found as child of the camera rig');
+      return;
+    }
+    
+    // Initialize vectors for calculations
+    this.targetPosition = new THREE.Vector3();
+    this.cameraPosition = new THREE.Vector3();
+    this.targetRotation = new THREE.Euler();
     this.lookTarget = new THREE.Vector3();
     
-    // Store references to avoid garbage collection
-    this.cameraEl = this.el.querySelector('#camera');
-    this.targetEl = this.data.target;
-    
-    // Make sure we have valid references
-    if (!this.cameraEl) {
-      console.error('No camera found within the entity with third-person-camera');
-      return;
-    }
-    if (!this.targetEl) {
-      console.error('No target found for third-person-camera');
+    // Make sure target exists
+    if (!this.data.target) {
+      console.error('No target specified for third-person camera');
       return;
     }
     
-    console.log('Third-person camera initialized, following:', this.targetEl.id);
+    console.log("Third-person camera initialized with target:", this.data.target.id);
+    
+    // Disable look-controls on initialization to prevent conflicts
+    if (this.cameraEl.getAttribute('look-controls')) {
+      this.lookControlsEnabled = this.cameraEl.getAttribute('look-controls').enabled;
+      this.cameraEl.setAttribute('look-controls', 'enabled', false);
+    }
+    
+    // Initialize the camera position
+    this.updateCameraPosition(0);
+  },
+  
+  update: function (oldData) {
+    // Handle any parameter changes
+    if (oldData.target !== this.data.target) {
+      console.log("Camera target changed to:", this.data.target ? this.data.target.id : 'none');
+    }
   },
   
   tick: function (time, delta) {
-    if (!this.targetEl || !this.cameraEl) return;
-
+    if (!this.data.target || !this.cameraEl) return;
+    
+    this.updateCameraPosition(delta);
+  },
+  
+  updateCameraPosition: function (delta) {
+    if (!this.data.target || !this.cameraEl) return;
+    
     const dt = delta / 1000;
     
     // Get target position and add height offset
-    this.targetEl.object3D.getWorldPosition(this.targetPosition);
+    this.data.target.object3D.getWorldPosition(this.targetPosition);
     this.lookTarget.copy(this.targetPosition);
     this.lookTarget.y += this.data.lookAtHeight;
     
     // Get target rotation (just the Y component for horizontal rotation)
-    this.targetRotation.y = this.targetEl.object3D.rotation.y;
+    this.targetRotation.y = this.data.target.object3D.rotation.y;
     
     // Calculate camera position based on target position and rotation
     const distance = this.data.distance;
@@ -62,20 +83,20 @@ if (!AFRAME.components['third-person-camera']) {
     
     // Apply smoothing - lerp between current position and desired position
     const smoothing = Math.min(this.data.smoothing * dt, 1.0);
+    
+    // Update rig position with smoothing
     this.el.object3D.position.lerp(this.targetPosition, smoothing);
     
-    // Update camera position with smoothing
-    this.cameraEl.object3D.position.lerp(
-      new THREE.Vector3(
-        this.cameraPosition.x - this.targetPosition.x,
-        this.cameraPosition.y - this.targetPosition.y,
-        this.cameraPosition.z - this.targetPosition.z
-      ),
-      smoothing
+    // Update camera position relative to the rig
+    const cameraOffset = new THREE.Vector3(
+      this.cameraPosition.x - this.targetPosition.x,
+      this.cameraPosition.y - this.targetPosition.y,
+      this.cameraPosition.z - this.targetPosition.z
     );
+    
+    this.cameraEl.object3D.position.lerp(cameraOffset, smoothing);
     
     // Make camera look at the target
     this.cameraEl.object3D.lookAt(this.lookTarget);
   }
-  });
-}
+});

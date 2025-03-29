@@ -1,73 +1,42 @@
+/* global THREE */
 
-/**
- * Draco decoder utility for A-Frame
- * This utility helps set up Draco compression for glTF models
- */
+// This script initializes the DRACOLoader correctly
 
-// Only setup if DRACOLoader exists
-if (typeof THREE !== 'undefined' && THREE.DRACOLoader) {
-  // Initialize the Draco loader globally
-  const dracoLoader = new THREE.DRACOLoader();
-  dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+// Function to initialize the Draco decoder for glTF models
+function initializeDracoDecoder() {
+  console.log("Initializing Draco decoder");
 
-  // Configure A-Frame to use Draco for all glTF models
-  if (THREE.GLTFLoader) {
-    THREE.GLTFLoader.prototype.setDRACOLoader(dracoLoader);
-  }
+  // Make sure THREE.GLTFLoader is available
+  if (typeof THREE !== 'undefined' && THREE.GLTFLoader) {
+    // Create a DRACOLoader instance
+    const dracoLoader = new THREE.DRACOLoader();
 
-  // Register draco-model component only if not already registered
-  if (!AFRAME.components['draco-model']) {
-    AFRAME.registerComponent('draco-model', {
-      schema: {
-        src: {type: 'asset'},
-        crossOrigin: {default: ''},
-      },
+    // Specify the path to the Draco decoder files
+    // The path should be relative to the application's base URL
+    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.5/');
 
-      init: function () {
-        this.model = null;
-        this.loader = new THREE.GLTFLoader();
-        
-        // Set up Draco loader
-        this.loader.setDRACOLoader(dracoLoader);
-        
-        this.onError = this.onError.bind(this);
-      },
+    // Optional: Pre-fetch the decoder to improve performance
+    dracoLoader.preload();
 
-      update: function () {
-        const data = this.data;
-        if (!data.src) return;
+    // Make the DRACOLoader available to the GLTFLoader
+    if (THREE.GLTFLoader) {
+      THREE.GLTFLoader.prototype.setDRACOLoader = function(loader) {
+        this.dracoLoader = loader;
+        return this;
+      };
 
-        this.remove();
-        
-        if (data.crossOrigin) this.loader.setCrossOrigin(data.crossOrigin);
-        
-        this.loader.load(
-          data.src, 
-          gltf => this.load(gltf), 
-          undefined, 
-          this.onError
-        );
-      },
+      // Create a dummy GLTFLoader to attach the dracoLoader
+      const gltfLoader = new THREE.GLTFLoader();
+      gltfLoader.setDRACOLoader(dracoLoader);
 
-      load: function (gltfModel) {
-        const el = this.el;
-        this.model = gltfModel.scene || gltfModel.scenes[0];
-        this.model.animations = gltfModel.animations;
-        
-        el.setObject3D('mesh', this.model);
-        el.emit('model-loaded', {format: 'gltf', model: this.model});
-      },
-
-      onError: function (error) {
-        console.error('Error loading Draco-compressed glTF model:', error);
-        this.el.emit('model-error', {src: this.data.src, error: error});
-      },
-
-      remove: function () {
-        if (!this.model) return;
-        this.el.removeObject3D('mesh');
-        this.model = null;
-      }
-    });
+      console.log("DRACOLoader successfully initialized");
+    } else {
+      console.error("THREE.GLTFLoader not found");
+    }
+  } else {
+    console.error("THREE.js or THREE.GLTFLoader not found");
   }
 }
+
+// Call the initialization function
+window.addEventListener('load', initializeDracoDecoder);

@@ -1,398 +1,319 @@
-AFRAME.registerComponent('weapon-component', {
+/* global AFRAME, THREE */
+
+AFRAME.registerComponent("weapon-component", {
   schema: {
-    damage: { type: 'number', default: 25 },
-    cooldown: { type: 'number', default: 0.5 },
-    automatic: { type: 'boolean', default: true },
-    range: { type: 'number', default: 100 },
-    clipSize: { type: 'number', default: 30 },
-    reloadTime: { type: 'number', default: 2 },
-    accuracy: { type: 'number', default: 0.98 } 
+    damage: { type: "number", default: 10 },
+    cooldown: { type: "number", default: 0.5 },
+    automatic: { type: "boolean", default: false },
+    range: { type: "number", default: 100 },
+    accuracy: { type: "number", default: 0.9 },
+    ammo: { type: "number", default: -1 }, // -1 for infinite
   },
-  init: function() {
-    this.lastShot = 0;
-    this.isReloading = false;
-    this.ammoInClip = this.data.clipSize;
-    this.reloadTimer = null;
-    this.raycaster = new THREE.Raycaster();
+
+  init: function () {
+    this.isFiring = false;
+    this.lastFired = 0;
     this.createWeaponModel();
     this.setupEventListeners();
-    this.updateAmmoDisplay();
-    this.mouseDown = false;
-    this.fireLoopId = null;
+    this.setupSound();
+    this.muzzleFlash = null;
+    this.createMuzzleFlash();
+
+    // Raycaster for weapon
+    this.raycaster = new THREE.Raycaster();
+    this.direction = new THREE.Vector3();
+    this.tempMatrix = new THREE.Matrix4();
+    this.offsetRays = [];
+
+    // Create offset rays for better hit detection (shotgun spread pattern)
+    for (let i = 0; i < 5; i++) {
+      this.offsetRays.push(new THREE.Vector3());
+    }
   },
-  createWeaponModel: function() {
-    const material = new THREE.MeshStandardMaterial({ color: 0x222222 });
-    const gunGroup = new THREE.Group();
-    const barrelGeometry = new THREE.BoxGeometry(0.05, 0.05, 0.4);
-    const barrel = new THREE.Mesh(barrelGeometry, material);
-    barrel.position.z = -0.2;
-    gunGroup.add(barrel);
-    const handleGeometry = new THREE.BoxGeometry(0.05, 0.12, 0.05);
-    const handle = new THREE.Mesh(handleGeometry, material);
-    handle.position.y = -0.08;
-    gunGroup.add(handle);
-    const bodyGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.2);
-    const body = new THREE.Mesh(bodyGeometry, material);
-    body.position.z = 0;
-    gunGroup.add(body);
-    this.el.setObject3D('mesh', gunGroup);
-    this.el.setAttribute('animation__recoil', {
-      property: 'position',
-      from: '0.2 -0.2 -0.3',
-      to: '0.2 -0.1 -0.2',
-      dur: 50,
-      autoplay: false
+
+  createWeaponModel: function () {
+    // Create a simple weapon model using THREE.js
+    const weaponGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.5);
+    const weaponMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+    this.weaponMesh = new THREE.Mesh(weaponGeometry, weaponMaterial);
+
+    // Create a group to hold the weapon mesh
+    this.weaponGroup = new THREE.Group();
+    this.weaponGroup.add(this.weaponMesh);
+
+    // Position the weapon mesh within the group
+    this.weaponMesh.position.set(0, 0, -0.25);
+
+    // Set the weapon model as an object3D on the entity
+    this.el.setObject3D("weapon", this.weaponGroup);
+
+    // Find weapon mounts on the player model
+    const leftMount = document.getElementById("weapon-mount-left");
+    const rightMount = document.getElementById("weapon-mount-right");
+
+    if (leftMount && rightMount) {
+      // Create left weapon
+      const leftWeaponGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.5);
+      const leftWeaponMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+      const leftWeaponMesh = new THREE.Mesh(leftWeaponGeometry, leftWeaponMaterial);
+
+      // Create a group for left weapon
+      const leftWeaponGroup = new THREE.Group();
+      leftWeaponGroup.add(leftWeaponMesh);
+      leftWeaponMesh.position.set(0, 0, -0.25);
+      leftMount.setObject3D("weapon", leftWeaponGroup);
+
+      // Create right weapon
+      const rightWeaponGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.5);
+      const rightWeaponMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+      const rightWeaponMesh = new THREE.Mesh(rightWeaponGeometry, rightWeaponMaterial);
+
+      // Create a group for right weapon
+      const rightWeaponGroup = new THREE.Group();
+      rightWeaponGroup.add(rightWeaponMesh);
+      rightWeaponMesh.position.set(0, 0, -0.25);
+      rightMount.setObject3D("weapon", rightWeaponGroup);
+    }
+  },
+
+  createMuzzleFlash: function () {
+    // Create muzzle flash
+    const flashGeometry = new THREE.PlaneGeometry(0.2, 0.2);
+    const flashMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffff00,
+      transparent: true,
+      opacity: 0,
+      side: THREE.DoubleSide,
     });
-    this.el.setAttribute('animation__recover', {
-      property: 'position',
-      from: '0.2 -0.1 -0.2',
-      to: '0.2 -0.2 -0.3',
-      dur: 100,
-      autoplay: false
+    this.muzzleFlash = new THREE.Mesh(flashGeometry, flashMaterial);
+    this.muzzleFlash.position.set(0, 0, -0.55);
+    this.muzzleFlash.rotation.y = Math.PI / 2;
+    this.weaponGroup.add(this.muzzleFlash);
+  },
+
+  setupSound: function () {
+    // Create sound entities for weapon
+    this.el.setAttribute("sound__shoot", {
+      src: "url(/sounds/laser-gun.mp3)",
+      poolSize: 3,
+      volume: 0.5,
+      maxDistance: 100,
+      refDistance: 10,
+      rolloffFactor: 1
+    });
+
+    this.el.setAttribute("sound__empty", {
+      src: "url(/sounds/empty-gun.mp3)",
+      poolSize: 1,
+      volume: 0.5
     });
   },
-  setupEventListeners: function() {
-    this.onMouseDown = this.onMouseDown.bind(this);
-    this.onMouseUp = this.onMouseUp.bind(this);
-    document.addEventListener('mousedown', this.onMouseDown);
-    document.addEventListener('mouseup', this.onMouseUp);
+
+  setupEventListeners: function () {
+    // Setup event listeners for firing
+    this.onMouseDownHandler = this.onMouseDown.bind(this);
+    this.onMouseUpHandler = this.onMouseUp.bind(this);
+
+    document.addEventListener("mousedown", this.onMouseDownHandler);
+    document.addEventListener("mouseup", this.onMouseUpHandler);
+
+    // For mobile/touch devices
+    document.addEventListener("touchstart", this.onMouseDownHandler);
+    document.addEventListener("touchend", this.onMouseUpHandler);
   },
-  onMouseDown: function(event) {
-    if (!document.pointerLockElement) return;
-    if (event.button !== 0) return;
-    this.mouseDown = true;
-    if (this.data.automatic) {
-      this.startFiring();
-    } else {
-      this.shoot();
-    }
-  },
-  onMouseUp: function(event) {
-    if (event.button !== 0) return;
-    this.mouseDown = false;
-    if (this.data.automatic) {
-      this.stopFiring();
-    }
-  },
-  startFiring: function() {
-    if (this.fireLoopId !== null) {
-      clearInterval(this.fireLoopId);
-    }
-    this.shoot();
-    this.fireLoopId = setInterval(() => {
-      if (!this.mouseDown) {
-        this.stopFiring();
-        return;
+
+  onMouseDown: function (e) {
+    if (e.button === 0 || e.type === "touchstart") {
+      this.isFiring = true;
+      if (!this.data.automatic) {
+        this.fire();
       }
-      this.shoot();
-    }, this.data.cooldown * 1000);
-  },
-  stopFiring: function() {
-    if (this.fireLoopId !== null) {
-      clearInterval(this.fireLoopId);
-      this.fireLoopId = null;
     }
   },
-  updateAmmoDisplay: function() {
-    const ammoDisplay = document.getElementById('ammo-display');
-    if (ammoDisplay) {
-      if (this.isReloading) {
-        ammoDisplay.textContent = 'RELOADING...';
-      } else {
-        ammoDisplay.textContent = `${this.ammoInClip} / ∞`;
-      }
+
+  onMouseUp: function (e) {
+    if (e.button === 0 || e.type === "touchend") {
+      this.isFiring = false;
     }
   },
-  reload: function() {
-    if (this.isReloading) return;
-    if (this.ammoInClip === this.data.clipSize) return;
-    this.isReloading = true;
-    this.updateAmmoDisplay();
-    this.reloadTimer = setTimeout(() => {
-      this.ammoInClip = this.data.clipSize;
-      this.isReloading = false;
-      this.updateAmmoDisplay();
-    }, this.data.reloadTime * 1000);
-  },
-  applyRecoil: function() {
-    this.el.components.animation__recoil.beginAnimation();
-    setTimeout(() => {
-      this.el.components.animation__recover.beginAnimation();
-    }, 50);
-  },
-  createMuzzleFlash: function() {
-    const flash = document.createElement('a-entity');
-    const worldPosition = new THREE.Vector3();
-    this.el.object3D.getWorldPosition(worldPosition);
-    const camera = document.querySelector('a-camera').object3D;
-    const direction = new THREE.Vector3(0, 0, -1);
-    direction.applyQuaternion(camera.quaternion);
-    const position = new THREE.Vector3(worldPosition.x, worldPosition.y, worldPosition.z)
-      .add(direction.multiplyScalar(0.4));
-    flash.setAttribute('position', position);
-    flash.setAttribute('particle-system', {
-      preset: 'dust',
-      particleCount: 10,
-      color: '#ff0,#ff5',
-      size: 0.1,
-      duration: 0.1,
-      direction: 'normal',
-      velocity: 0.5
-    });
-    document.querySelector('a-scene').appendChild(flash);
-  },
-  createTracer: function(start, end) {
-    const scene = document.querySelector('a-scene').object3D;
-    const material = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
-    const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-    const line = new THREE.Line(geometry, material);
-    scene.add(line);
-    setTimeout(() => {
-      scene.remove(line);
-      line.geometry.dispose();
-      line.material.dispose();
-    }, 100);
-  },
-  createHitEffect: function(position) {
-    const hitEffect = document.createElement('a-entity');
-    hitEffect.setAttribute('position', position);
-    hitEffect.setAttribute('particle-system', {
-      preset: 'dust',
-      particleCount: 15,
-      color: '#f00,#900',
-      size: 0.05,
-      duration: 0.3,
-      direction: 'normal',
-      velocity: 0.5
-    });
-    document.querySelector('a-scene').appendChild(hitEffect);
-  },
-  createImpactEffect: function(position, normal) {
-    const impactEffect = document.createElement('a-entity');
-    impactEffect.setAttribute('position', position);
-    const orientationQuaternion = new THREE.Quaternion().setFromUnitVectors(
-      new THREE.Vector3(0, 1, 0),
-      normal
-    );
-    const orientationEuler = new THREE.Euler().setFromQuaternion(orientationQuaternion);
-    const rotation = {
-      x: THREE.MathUtils.radToDeg(orientationEuler.x),
-      y: THREE.MathUtils.radToDeg(orientationEuler.y),
-      z: THREE.MathUtils.radToDeg(orientationEuler.z)
-    };
-    impactEffect.setAttribute('rotation', rotation);
-    impactEffect.setAttribute('particle-system', {
-      preset: 'dust',
-      particleCount: 10,
-      color: '#888,#aaa',
-      size: 0.03,
-      duration: 0.5,
-      direction: 'normal',
-      velocity: 0.3
-    });
-    document.querySelector('a-scene').appendChild(impactEffect);
-  },
-  currentTime: 0,
-  shoot: function() {
-    const now = performance.now();
-    if (this.isReloading || this.ammoInClip <= 0 || now - this.lastShot < this.data.cooldown * 1000) {
-      if (this.ammoInClip <= 0) this.reload();
+
+  fire: function () {
+    const now = Date.now();
+    if (now - this.lastFired < this.data.cooldown * 1000) return;
+
+    // Check if we have ammo
+    if (this.data.ammo === 0) {
+      this.el.components.sound__empty.playSound();
       return;
     }
 
-    this.lastShot = now;
-    this.ammoInClip--;
-    this.updateAmmoDisplay();
-    this.applyRecoil();
-    this.createMuzzleFlash();
+    // Update last fired time
+    this.lastFired = now;
 
-    const camera = document.querySelector('a-camera').object3D;
-    const weaponPosition = new THREE.Vector3();
-    this.el.object3D.getWorldPosition(weaponPosition);
+    // Decrement ammo if not infinite
+    if (this.data.ammo > 0) {
+      this.data.ammo--;
+      // Update ammo display
+      document.getElementById("ammo-display").textContent = 
+        this.data.ammo + " / ∞";
+    }
 
+    // Play shooting sound
+    this.el.components.sound__shoot.playSound();
+
+    // Get camera and player position/direction for raycasting
+    const camera = document.getElementById("camera").object3D;
+    const player = document.getElementById("player").object3D;
+
+    // Set the raycaster to use the camera's position and direction
+    camera.getWorldPosition(this.raycaster.ray.origin);
+    camera.getWorldDirection(this.direction);
+    console.log("Firing weapon - Direction:", this.direction);
+
+    // Apply some randomness for weapon accuracy
     const accuracy = this.data.accuracy;
-    const spread = 1.0 - accuracy;
+    const spread = (1 - accuracy) * 0.1;
+    this.direction.x += (Math.random() - 0.5) * spread;
+    this.direction.y += (Math.random() - 0.5) * spread;
+    this.direction.z += (Math.random() - 0.5) * spread;
+    this.direction.normalize();
 
-    const direction = new THREE.Vector3(0, 0, -1);
-    direction.applyQuaternion(camera.quaternion);
+    this.raycaster.ray.direction.copy(this.direction);
 
-    if (Math.abs(direction.y) > 0.8) {
-      direction.y = Math.sign(direction.y) * 0.3;
-      direction.normalize();
+    // Set up offset rays for better hit detection
+    for (let i = 0; i < this.offsetRays.length; i++) {
+      const offsetDir = this.offsetRays[i];
+      offsetDir.copy(this.direction);
+      offsetDir.x += (Math.random() - 0.5) * spread * 2;
+      offsetDir.y += (Math.random() - 0.5) * spread * 2;
+      offsetDir.z += (Math.random() - 0.5) * spread * 2;
+      offsetDir.normalize();
     }
 
-    if (spread > 0) {
-      direction.x += (Math.random() - 0.5) * spread * 0.05;
-      direction.y += (Math.random() - 0.5) * spread * 0.05;
-      direction.z += (Math.random() - 0.5) * spread * 0.005;
-      direction.normalize();
-    }
+    // Raycast to find what we hit
+    this.checkForHits();
 
-    this.raycaster.set(weaponPosition, direction);
-    this.raycaster.far = this.data.range;
+    // Flash muzzle effect
+    this.flashMuzzle();
+  },
 
-    const allTargets = [];
-    const enemyElements = document.querySelectorAll('[enemy-component]');
-    enemyElements.forEach(enemy => {
-      if (enemy.object3D) {
-        allTargets.push(enemy.object3D);
-      }
-    });
+  checkForHits: function () {
+    // Get all potential targets
+    const enemyEls = Array.from(document.querySelectorAll("[enemy-component]"));
+    const allTargets = Array.from(document.querySelectorAll("a-entity, a-plane, a-box"));
+    console.log("Found " + enemyEls.length + " potential enemy targets and " + allTargets.length + " total targets");
 
-    const obstacles = document.querySelectorAll('.obstacle, [ground]');
-    obstacles.forEach(obstacle => {
-      if (obstacle.object3D) allTargets.push(obstacle.object3D);
-    });
+    // Convert to THREE.Object3D for raycasting
+    const enemies = enemyEls.map(el => el.object3D);
 
-    const intersects = this.raycaster.intersectObjects(allTargets, true);
+    // First try direct hit
+    let hit = false;
+    let intersects = this.raycaster.intersectObjects(allTargets.map(el => el.object3D), true);
 
-    let allRayIntersects = [];
     if (intersects.length > 0) {
-      allRayIntersects = intersects;
-    } else {
-      const offsetAmount = 0.1;
-      const offsets = [
-        new THREE.Vector3(offsetAmount, 0, 0),
-        new THREE.Vector3(-offsetAmount, 0, 0),
-        new THREE.Vector3(0, offsetAmount, 0),
-        new THREE.Vector3(0, -offsetAmount, 0)
-      ];
+      console.log("Hit object:", intersects[0].object.toJSON());
+      const hitObject = this.findAncestorWithEl(intersects[0].object);
 
-      for (const offset of offsets) {
-        const offsetDirection = direction.clone().add(offset).normalize();
-        this.raycaster.set(weaponPosition, offsetDirection);
-        const offsetIntersects = this.raycaster.intersectObjects(allTargets, true);
-        if (offsetIntersects.length > 0) {
-          allRayIntersects = offsetIntersects;
-          break;
-        }
+      if (hitObject) {
+        hit = this.processHit(hitObject, intersects[0].distance);
       }
     }
 
-    if (allRayIntersects.length > 0) {
-      const closestHit = allRayIntersects[0];
-      const hitPoint = closestHit.point;
-      let hitEntity = null;
-      let currentObj = closestHit.object;
+    // If no hit, try offset rays
+    if (!hit) {
+      const originalDirection = this.raycaster.ray.direction.clone();
 
-      if (currentObj.userData && currentObj.userData.ownerEntity) {
-        hitEntity = currentObj.userData.ownerEntity;
-      } else if (currentObj.el && (
-        currentObj.el.classList.contains('hitbox-mesh') ||
-        currentObj.el.classList.contains('enemy-hitbox') ||
-        currentObj.el.getAttribute('data-hitbox-type') === 'enemy'
-      )) {
-        const ownerId = currentObj.el.getAttribute('data-hitbox-owner');
-        if (ownerId) {
-          const ownerEntity = document.getElementById(ownerId);
-          if (ownerEntity) {
-            hitEntity = ownerEntity;
-          }
-        } else if (!hitEntity && currentObj.el.parentNode) {
-          let parent = currentObj.el.parentNode;
-          while (parent && !parent.hasAttribute('enemy-component')) {
-            parent = parent.parentNode;
-            if (!parent) break;
-          }
-          if (parent && parent.hasAttribute('enemy-component')) {
-            hitEntity = parent;
+      for (const offsetDir of this.offsetRays) {
+        this.raycaster.ray.direction.copy(offsetDir);
+        intersects = this.raycaster.intersectObjects(allTargets.map(el => el.object3D), true);
+
+        if (intersects.length > 0) {
+          console.log("Hit detected with offset ray");
+          console.log("Hit object:", intersects[0].object.toJSON());
+          const hitObject = this.findAncestorWithEl(intersects[0].object);
+
+          if (hitObject) {
+            hit = this.processHit(hitObject, intersects[0].distance);
+            if (hit) break;
           }
         }
-      } else while (currentObj && !hitEntity) {
-        if (currentObj.el) {
-          hitEntity = currentObj.el;
-          break;
-        }
-        if (!currentObj.parent) break;
-        currentObj = currentObj.parent;
       }
 
-      if (hitEntity && closestHit.distance <= this.data.range) {
-        let enemyComponent = null;
-        if (hitEntity.hasAttribute('enemy-component')) {
-          enemyComponent = hitEntity.components['enemy-component'];
-        } else if (currentObj.userData && currentObj.userData.isEnemyHitbox) {
-          const ownerEntity = currentObj.userData.ownerEntity;
-          if (ownerEntity && ownerEntity.components && ownerEntity.components['enemy-component']) {
-            enemyComponent = ownerEntity.components['enemy-component'];
-          }
-        } else {
-          let parent = hitEntity;
-          let attempts = 0;
-          while (parent && !enemyComponent && attempts < 3) {
-            if (parent.components && parent.components['enemy-component']) {
-              enemyComponent = parent.components['enemy-component'];
-            }
-            parent = parent.parentNode;
-            attempts++;
-          }
-        }
+      // Restore original direction
+      this.raycaster.ray.direction.copy(originalDirection);
+    }
+  },
 
-        if (enemyComponent) {
-          enemyComponent.takeDamage(this.data.damage, hitPoint);
-          this.createHitEffect(hitPoint);
-          this.playHitSound();
-          this.showHitMarker();
-        } else {
-          this.createImpactEffect(hitPoint, closestHit.face.normal);
-        }
+  findAncestorWithEl: function (object) {
+    // Try to find the A-Frame entity associated with the THREE.js object
+    let current = object;
+
+    while (current) {
+      if (current.el) {
+        console.log("Found entity via object3D.el reference");
+        return current.el;
       }
-    } else {
-      const endPoint = new THREE.Vector3().copy(weaponPosition).add(direction.multiplyScalar(this.data.range));
-      this.createTracer(weaponPosition, endPoint);
+      current = current.parent;
     }
 
-    this.el.emit('weapon-shot', { damage: this.data.damage });
-    if (this.ammoInClip <= 0) this.reload();
+    return null;
   },
 
-  playHitSound: function() {
-    const context = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = context.createOscillator();
-    const gainNode = context.createGain();
+  processHit: function (hitEl, distance) {
+    if (!hitEl) return false;
 
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(600, context.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(200, context.currentTime + 0.1);
+    // Check if we hit an enemy
+    if (hitEl.components && hitEl.components["enemy-component"]) {
+      console.log("Hit enemy:", hitEl.id || "unnamed enemy", "Distance:", distance.toFixed(2));
 
-    gainNode.gain.setValueAtTime(0.1, context.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.1);
+      // Apply damage to enemy
+      hitEl.components["enemy-component"].takeDamage(this.data.damage);
+      return true;
+    } 
+    // Check if we hit player (no friendly fire)
+    else if (hitEl.components && hitEl.components["player-component"]) {
+      console.log("Hit player (no damage):", hitEl.id || "player", "Distance:", distance.toFixed(2));
+      return true;
+    }
+    // Environment hit
+    else {
+      console.log("Hit entity:", hitEl.id || "unknown", "Distance:", distance.toFixed(2));
+      console.log("Hit environment at distance:", distance.toFixed(2));
 
-    oscillator.connect(gainNode);
-    gainNode.connect(context.destination);
-
-    oscillator.start();
-    oscillator.stop(context.currentTime + 0.1);
-  },
-
-  showHitMarker: function() {
-    const crosshair = document.getElementById('crosshair');
-    if (crosshair) {
-      const originalColor = crosshair.style.color || 'white';
-      crosshair.style.color = 'red';
-      crosshair.style.fontSize = '24px';
-
-      setTimeout(() => {
-        crosshair.style.color = originalColor;
-        crosshair.style.fontSize = '20px';
-      }, 100);
+      // Could create impact effect or bullet holes here
+      return true;
     }
   },
-  tick: function(time, delta) {
-    if (this.ammoInClip < this.data.clipSize && !this.isReloading && document.pointerLockElement) {
-      if (document.activeElement === document.body && (document.querySelector('r:active') || document.querySelector('R:active'))) {
-        this.reload();
+
+  flashMuzzle: function () {
+    if (!this.muzzleFlash) return;
+
+    // Show muzzle flash
+    this.muzzleFlash.material.opacity = 1;
+
+    // Hide it after a short time
+    setTimeout(() => {
+      if (this.muzzleFlash) {
+        this.muzzleFlash.material.opacity = 0;
       }
+    }, 50);
+  },
+
+  tick: function (time, delta) {
+    // Handle automatic firing
+    if (this.isFiring && this.data.automatic) {
+      this.fire();
     }
   },
-  remove: function() {
-    document.removeEventListener('mousedown', this.onMouseDown);
-    document.removeEventListener('mouseup', this.onMouseUp);
-    if (this.reloadTimer) {
-      clearTimeout(this.reloadTimer);
-    }
-    if (this.fireLoopId) {
-      clearInterval(this.fireLoopId);
-    }
+
+  remove: function () {
+    // Clean up event listeners when component is removed
+    document.removeEventListener("mousedown", this.onMouseDownHandler);
+    document.removeEventListener("mouseup", this.onMouseUpHandler);
+    document.removeEventListener("touchstart", this.onMouseDownHandler);
+    document.removeEventListener("touchend", this.onMouseUpHandler);
+
+    // Remove weapon model
+    this.el.removeObject3D("weapon");
   }
 });
