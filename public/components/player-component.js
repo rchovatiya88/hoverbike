@@ -562,7 +562,10 @@ AFRAME.registerComponent('player-component', {
         this.el.setAttribute("rotation", rotation);
 
         // Update UI
-        this.updateAmmoDisplay();
+        if (this.el.components['weapon-component'] && 
+            typeof this.el.components['weapon-component'].updateAmmoDisplay === 'function') {
+          this.el.components['weapon-component'].updateAmmoDisplay();
+        }
 
     // Update particle effects
     this.updateParticles(delta);
