@@ -1,4 +1,5 @@
 run = "index.html"
+modules = ["nodejs-20"]
 
 [nix]
 channel = "stable-24_05"
@@ -7,7 +8,7 @@ channel = "stable-24_05"
 run = ["sh", "-c", "python -m http.server 5000"]
 
 [workflows]
-runButton = "Run Web Server"
+runButton = "Web Server"
 
 [[workflows.workflow]]
 name = "Run"
@@ -26,3 +27,16 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npx http-server -p 5000"
+
+[[workflows.workflow]]
+name = "Web Server"
+author = 11836116
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npx http-server -p 5000 --cors"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
