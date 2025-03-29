@@ -35,7 +35,7 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npx http-server -p 5000 --cors"
+args = "npx http-server -p 5001 --cors"
 
 [[workflows.workflow]]
 name = "Web Server"
@@ -49,3 +49,7 @@ args = "npx http-server -p 5000 --cors"
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 5001
+externalPort = 3000
