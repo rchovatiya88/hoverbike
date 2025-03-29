@@ -73,11 +73,14 @@ AFRAME.registerComponent('third-person-camera', {
       .add(new THREE.Vector3(0, this.data.height, 0));
 
     // Apply damping based on delta time for smoother movement
-    const dampingFactor = Math.min(this.data.damping * (delta/16.6), 1.0);
+    const dampingFactor = Math.min(Math.max(this.data.damping * (delta/16.6), 0), 1);
     this.el.object3D.position.lerp(idealPosition, dampingFactor);
 
-    // Make camera look at target plus height offset
-    this.el.object3D.lookAt(this.targetPosition);
+    // Create a look target that includes the height offset
+    const lookTarget = this.targetPosition.clone();
+
+    // Make camera look at target 
+    this.el.object3D.lookAt(lookTarget);
   },
 
   handleCollision: function(idealPosition) {
