@@ -447,8 +447,122 @@ AFRAME.registerComponent('player-component', {
   tick: function(time, delta) {
     if (this.isDead) return;
 
-    // Update movement
-    this.updateMovement(delta);
+        // Handle movement with smooth acceleration and deceleration
+        const rotation = this.el.getAttribute("rotation");
+        let position = this.el.getAttribute("position");
+
+        // Initialize velocity if not present
+        if (!this.velocity) {
+            this.velocity = { x: 0, y: 0, z: 0 };
+            this.acceleration = 0.01;
+            this.deceleration = 0.008;
+            this.maxSpeed = this.data.speed / 1000;
+            this.hoverHeight = 2.0;
+            this.hoverVariance = 0.2;
+            this.hoverFrequency = 0.001;
+        }
+
+        // Calculate move direction based on key inputs
+        let moveZ = 0;
+        let moveX = 0;
+        let moveY = 0;
+
+        if (this.keys["w"]) moveZ = -1;
+        if (this.keys["s"]) moveZ = 1;
+        if (this.keys["a"]) rotation.y += 2;
+        if (this.keys["d"]) rotation.y -= 2;
+        if (this.keys["q"]) moveY = 1;
+        if (this.keys["e"]) moveY = -1;
+
+        // Convert direction to world space
+        const radians = (rotation.y * Math.PI) / 180;
+        const worldMoveX = -(moveZ * Math.sin(radians));
+        const worldMoveZ = -(moveZ * Math.cos(radians));
+
+        // Apply acceleration or deceleration
+        if (moveZ !== 0) {
+            this.velocity.x += worldMoveX * this.acceleration * delta;
+            this.velocity.z += worldMoveZ * this.acceleration * delta;
+        } else {
+            // Apply deceleration when not accelerating
+            if (Math.abs(this.velocity.x) > 0.0001) {
+                this.velocity.x *= (1 - this.deceleration * delta);
+            } else {
+                this.velocity.x = 0;
+            }
+
+            if (Math.abs(this.velocity.z) > 0.0001) {
+                this.velocity.z *= (1 - this.deceleration * delta);
+            } else {
+                this.velocity.z = 0;
+            }
+        }
+
+        // Apply vertical movement
+        if (moveY !== 0) {
+            this.velocity.y += moveY * this.acceleration * delta;
+        } else {
+            // Apply vertical deceleration
+            if (Math.abs(this.velocity.y) > 0.0001) {
+                this.velocity.y *= (1 - this.deceleration * delta);
+            } else {
+                this.velocity.y = 0;
+            }
+        }
+
+        // Apply hover effect - gentle bobbing up and down
+        const hoverOffset = Math.sin(time * this.hoverFrequency) * this.hoverVariance;
+
+        // Cap speed
+        const currentSpeed = Math.sqrt(
+            this.velocity.x * this.velocity.x + 
+            this.velocity.z * this.velocity.z
+        );
+
+        if (currentSpeed > this.maxSpeed) {
+            const scaleFactor = this.maxSpeed / currentSpeed;
+            this.velocity.x *= scaleFactor;
+            this.velocity.z *= scaleFactor;
+        }
+
+        // Cap vertical speed
+        const verticalSpeed = Math.abs(this.velocity.y);
+        if (verticalSpeed > this.maxSpeed * 0.7) {
+            this.velocity.y = (this.velocity.y / verticalSpeed) * this.maxSpeed * 0.7;
+        }
+
+        // Apply velocity to position
+        position.x += this.velocity.x * delta;
+        position.y += this.velocity.y * delta + hoverOffset * 0.01;
+        position.z += this.velocity.z * delta;
+
+        // Ensure minimum hover height
+        if (position.y < this.hoverHeight) {
+            position.y = this.hoverHeight + hoverOffset * 0.05;
+        }
+
+        // Bank the jetbike slightly during turns
+        const bankAmount = rotation.y - (this.prevRotationY || rotation.y);
+        if (Math.abs(bankAmount) > 0.1) {
+            // Apply banking (roll) effect, max 15 degrees
+            const targetBank = Math.max(Math.min(bankAmount * 2, 15), -15);
+            if (!this.currentBank) this.currentBank = 0;
+            this.currentBank = this.currentBank * 0.9 + targetBank * 0.1;
+            this.el.object3D.rotation.z = THREE.MathUtils.degToRad(-this.currentBank);
+        } else if (this.currentBank) {
+            // Return to upright
+            this.currentBank *= 0.9;
+            this.el.object3D.rotation.z = THREE.MathUtils.degToRad(-this.currentBank);
+        }
+
+        this.prevRotationY = rotation.y;
+
+        // Apply movement
+        this.el.setAttribute("position", position);
+        this.el.setAttribute("rotation", rotation);
+
+        // Update UI
+        this.updateAmmoDisplay();
 
     // Update particle effects
     this.updateParticles(delta);

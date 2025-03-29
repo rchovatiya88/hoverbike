@@ -217,7 +217,7 @@
                 gltf-model="#jetbike-model"
                 player-component="speed: 5; health: 100"
                 weapon-component="damage: 25; cooldown: 0.5; automatic: true"
-                position="0 1.5 0"
+                position="0 2 0"
                 rotation="0 180 0"
             >
                 <!-- Weapons attached to the bike -->
@@ -238,8 +238,8 @@
             <!-- Third-person camera -->
             <a-entity
                 id="camera-rig"
-                third-person-camera="target: #player; distance: 8; height: 4.5; lookAtHeight: 1.5; damping: 0.3"
-                position="0 5 -8"
+                third-person-camera="target: #player; distance: 6; height: 3; lookAtHeight: 1.75; damping: 0.4; enableCollision: true"
+                position="0 5 -6"
                 rotation="0 0 0"
             >
                 <a-camera
@@ -247,10 +247,18 @@
                     look-controls="reverseMouseDrag: false; touchEnabled: true; pointerLockEnabled: true; magicWindowTrackingEnabled: false"
                     wasd-controls="enabled: false"
                     position="0 0 0"
-                    rotation="-15 180 0"
+                    rotation="-10 180 0"
+                    near="0.1"
+                    far="1000"
                 >
                 </a-camera>
             </a-entity>
+
+            <!-- Debug visualization entities for camera (visible only in debug mode) -->
+            <a-entity id="debugCamera" geometry="primitive: box; width: 0.5; height: 0.5; depth: 0.5" material="color: blue; opacity: 0.5" visible="false"></a-entity>
+            <a-entity id="debugTarget" geometry="primitive: sphere; radius: 0.3" material="color: red; opacity: 0.5" visible="false"></a-entity>
+            <a-entity id="debugLine" line="color: yellow; opacity: 0.5" visible="false"></a-entity>
+            <a-entity id="debugText" text="value: Camera Debug; align: center; color: white" position="0 0 0" visible="false"></a-entity>
             <!-- Sky -->
             <a-sky color="#88CCEE"></a-sky>
             <!-- Lights -->
