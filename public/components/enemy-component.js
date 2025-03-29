@@ -226,10 +226,12 @@ if (!AFRAME.components['enemy-component']) {
           this.separationBehavior.active = false;
         }
 
-        // Update all three coordinates of the enemy position
-        this.el.object3D.position.x = this.vehicle.position.x;
-        this.el.object3D.position.y = this.vehicle.position.y;
-        this.el.object3D.position.z = this.vehicle.position.z;
+        // Update all three coordinates of the enemy position safely
+        if (this.vehicle && this.vehicle.position) {
+          this.el.object3D.position.x = this.vehicle.position.x;
+          this.el.object3D.position.y = this.vehicle.position.y;
+          this.el.object3D.position.z = this.vehicle.position.z;
+        }
 
         if ((this.currentState === 'chase' || this.currentState === 'attack') && distance > 0.1) {
           // Look at player in full 3D space
@@ -626,17 +628,27 @@ if (!AFRAME.components['enemy-component']) {
       } else {
         // YUKA AI update
         const dt = deltaTime / 1000;
-        this.time.update(dt);
-        // Get reference to the game manager's entity manager
-        const gameManager = document.querySelector('[game-manager]');
-        if (gameManager && gameManager.components && 
-            gameManager.components['game-manager'] && 
-            gameManager.components['game-manager'].entityManager) {
-          // The game manager will update all entities
-          // No need to update here
-        } else if (this.entityManager) {
-          // Only update local entity manager if needed
-          this.entityManager.update(dt);
+        
+        if (this.time) {
+          this.time.update(dt);
+        }
+        
+        // Handle YUKA entity update safely
+        try {
+          // Get reference to the game manager's entity manager
+          const gameManager = document.querySelector('[game-manager]');
+          if (gameManager && gameManager.components && 
+              gameManager.components['game-manager'] && 
+              gameManager.components['game-manager'].entityManager) {
+            // The game manager will update all entities
+            // No need to update here
+          } else if (this.entityManager) {
+            // Only update local entity manager if needed
+            this.entityManager.update(dt);
+          }
+        } catch (yukaError) {
+          console.warn('YUKA update error:', yukaError);
+          // Fallback to simple movement if YUKA fails
         }
 
         // Update the entity's position based on the AI vehicle
@@ -688,11 +700,21 @@ if (!AFRAME.components['enemy-component']) {
             1.5
           );
 
-          if (this.vehicleSound.isPlaying) {
+          if (this.vehicleSound && this.vehicleSound.isPlaying) {
             this.vehicleSound.setVolume(volume);
-            if (this.vehicleSound.source && this.vehicleSound.source.playbackRate && 
-                isFinite(pitch)) {
-              this.vehicleSound.source.playbackRate.value = pitch;
+            // Safe check for audio playback rate
+            try {
+              if (this.vehicleSound.source && 
+                  this.vehicleSound.source.playbackRate && 
+                  typeof pitch === 'number' && 
+                  isFinite(pitch)) {
+                this.vehicleSound.source.playbackRate.linearRampToValueAtTime(
+                  Math.max(0.5, Math.min(2.0, pitch)), // Clamp between 0.5 and 2.0
+                  this.vehicleSound.context.currentTime + 0.1
+                );
+              }
+            } catch (audioError) {
+              console.warn('Audio playback rate error:', audioError);
             }
           }
         } catch (error) {
@@ -814,7 +836,7 @@ function createParticles(scene, position, color, count, lifespan) {
       if (elapsed >= lifespan) {
         scene.removeChild(particle);
         particle.removeEventListener('tick', tick);
-      }      }
+      }
     };
 
     particle.addEventListener('tick', tick);
