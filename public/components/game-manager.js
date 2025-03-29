@@ -115,9 +115,14 @@ if (!AFRAME.components['game-manager']) {
     },
 
     updateUI: function () {
-      this.levelValueEl.textContent = this.data.level;
-      this.scoreValueEl.textContent = this.score;
-      this.enemiesValueEl.textContent = this.enemies.length;
+      // Update UI elements with null checks
+      const levelElement = document.getElementById('level-value');
+      const scoreElement = document.getElementById('score-value');
+      const enemiesElement = document.getElementById('enemies-value');
+
+      if (levelElement) levelElement.textContent = this.level;
+      if (scoreElement) scoreElement.textContent = this.score;
+      if (enemiesElement) enemiesElement.textContent = this.enemiesAlive;
     },
     // Sound playback functionality removed to fix encoding errors
     playSound: function (soundName) {

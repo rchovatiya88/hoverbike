@@ -285,44 +285,25 @@ if (!AFRAME.components['enemy-component']) {
     },
     setupYukaAI: function() {
     try {
-      // Create entity manager if it doesn't exist globally
-      if (!window.yukaEntityManager) {
-        window.yukaEntityManager = new YUKA.EntityManager();
-        window.yukaTime = new YUKA.Time();
+      if (!window.YUKA) {
+        console.error('YUKA library not found. AI navigation will not work.');
+        return;
       }
 
-      this.entityManager = window.yukaEntityManager;
-      this.time = window.yukaTime;
+      // Create the YUKA entity manager
+      this.entityManager = new YUKA.EntityManager();
 
       // Create a vehicle for the enemy
       this.vehicle = new YUKA.Vehicle();
-
-      // Initialize position from element
-      const position = new THREE.Vector3();
-      this.el.object3D.getWorldPosition(position);
-      this.vehicle.position.set(position.x, position.y, position.z);
-
       this.vehicle.maxSpeed = this.data.speed;
-      this.vehicle.maxForce = 50;
+      this.vehicle.updateWorldMatrix();
 
-      // Set the entity reference for animation updates
-      this.vehicle.userData.entity = this.el;
+      // Link the YUKA Vehicle with the A-Frame entity
+      this.vehicle.position.copy(this.el.object3D.position);
 
-      // Create the steering behaviors
-      this.seekBehavior = new YUKA.SeekBehavior(new YUKA.Vector3());
-      this.seekBehavior.weight = 1;
-
-      this.fleeBehavior = new YUKA.FleeBehavior(new YUKA.Vector3());
-      this.fleeBehavior.weight = 0.5;
-
-      // Initialize with empty obstacles array for now
-      this.obsAvoidBehavior = new YUKA.ObstacleAvoidanceBehavior([]);
-      this.obsAvoidBehavior.weight = 2;
-
-      // Add behaviors to vehicle
-      this.vehicle.steering.add(this.seekBehavior);
-      this.vehicle.steering.add(this.fleeBehavior);
-      this.vehicle.steering.add(this.obsAvoidBehavior);
+      // Store a reference to the A-Frame entity on the YUKA vehicle
+      // Fix: Ensure we're setting the reference correctly
+      this.vehicle.userData = { el: this.el };
 
       // Add the vehicle to the entity manager
       this.entityManager.add(this.vehicle);
