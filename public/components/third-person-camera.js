@@ -1,78 +1,79 @@
 
 /**
- * Third-person camera component - makes the camera follow the player in third person view
+ * Third-person camera component that follows the player entity
  */
 AFRAME.registerComponent('third-person-camera', {
   schema: {
     target: { type: 'selector', default: '#player' },
-    distance: { type: 'number', default: 5 },
-    height: { type: 'number', default: 2 },
-    smoothing: { type: 'number', default: 0.1 },
-    lockRotation: { type: 'boolean', default: false }
+    distance: { type: 'number', default: 6 },
+    height: { type: 'number', default: 3 },
+    lookAtHeight: { type: 'number', default: 1.5 },
+    rotationSpeed: { type: 'number', default: 10 },
+    smoothing: { type: 'number', default: 10 }
   },
 
-  init: function() {
+  init: function () {
+    this.cameraPosition = new THREE.Vector3();
     this.targetPosition = new THREE.Vector3();
-    this.currentPosition = new THREE.Vector3();
+    this.targetRotation = new THREE.Euler();
     
-    // Create a dummy object for smooth camera rotation
-    this.cameraHolder = document.createElement('a-entity');
-    this.cameraHolder.setAttribute('position', '0 0 0');
-    this.el.sceneEl.appendChild(this.cameraHolder);
+    // Create a look target offset above the player
+    this.lookTarget = new THREE.Vector3();
     
-    // Set up collision detection for camera
-    this.raycaster = new THREE.Raycaster();
-    this.collisionDetected = false;
+    // Store references to avoid garbage collection
+    this.cameraEl = this.el.querySelector('#camera');
+    this.targetEl = this.data.target;
+    
+    // Make sure we have valid references
+    if (!this.cameraEl) {
+      console.error('No camera found within the entity with third-person-camera');
+      return;
+    }
+    if (!this.targetEl) {
+      console.error('No target found for third-person-camera');
+      return;
+    }
+    
+    console.log('Third-person camera initialized, following:', this.targetEl.id);
   },
+  
+  tick: function (time, delta) {
+    if (!this.targetEl || !this.cameraEl) return;
 
-  tick: function(time, delta) {
-    const target = this.data.target;
+    const dt = delta / 1000;
     
-    if (!target) return;
+    // Get target position and add height offset
+    this.targetEl.object3D.getWorldPosition(this.targetPosition);
+    this.lookTarget.copy(this.targetPosition);
+    this.lookTarget.y += this.data.lookAtHeight;
     
-    // Get target's position and rotation
-    const targetObject3D = target.object3D;
-    targetObject3D.getWorldPosition(this.targetPosition);
+    // Get target rotation (just the Y component for horizontal rotation)
+    this.targetRotation.y = this.targetEl.object3D.rotation.y;
     
-    // Get camera rotation
-    const cameraRotation = this.el.getAttribute('rotation');
-    const radians = THREE.MathUtils.degToRad(cameraRotation.y);
+    // Calculate camera position based on target position and rotation
+    const distance = this.data.distance;
+    const height = this.data.height;
     
-    // Calculate ideal camera position based on target and distance
-    const idealPosition = new THREE.Vector3(
-      this.targetPosition.x - Math.sin(radians) * this.data.distance,
-      this.targetPosition.y + this.data.height,
-      this.targetPosition.z - Math.cos(radians) * this.data.distance
+    // Position the camera behind and above the target
+    this.cameraPosition.x = this.targetPosition.x - Math.sin(this.targetRotation.y) * distance;
+    this.cameraPosition.z = this.targetPosition.z - Math.cos(this.targetRotation.y) * distance;
+    this.cameraPosition.y = this.targetPosition.y + height;
+    
+    // Apply smoothing - lerp between current position and desired position
+    const smoothing = Math.min(this.data.smoothing * dt, 1.0);
+    this.el.object3D.position.lerp(this.targetPosition, smoothing);
+    
+    // Update camera position with smoothing
+    this.cameraEl.object3D.position.lerp(
+      new THREE.Vector3(
+        this.cameraPosition.x - this.targetPosition.x,
+        this.cameraPosition.y - this.targetPosition.y,
+        this.cameraPosition.z - this.targetPosition.z
+      ),
+      smoothing
     );
     
-    // Check for collisions with raycaster
-    this.raycaster.set(this.targetPosition, idealPosition.clone().sub(this.targetPosition).normalize());
-    const distance = this.targetPosition.distanceTo(idealPosition);
-    const intersections = this.raycaster.intersectObjects(this.el.sceneEl.object3D.children, true);
-    
-    let finalPosition;
-    if (intersections.length > 0 && intersections[0].distance < distance) {
-      // If collision detected, place camera at collision point
-      finalPosition = new THREE.Vector3().copy(intersections[0].point);
-      this.collisionDetected = true;
-    } else {
-      finalPosition = idealPosition;
-      this.collisionDetected = false;
-    }
-    
-    // Apply smoothing
-    if (this.data.smoothing > 0 && this.data.smoothing < 1) {
-      this.currentPosition.lerp(finalPosition, this.data.smoothing);
-    } else {
-      this.currentPosition.copy(finalPosition);
-    }
-    
-    // Update camera position
-    this.el.setAttribute('position', this.currentPosition);
-    
-    // If lockRotation is true, make the camera look at the target
-    if (this.data.lockRotation) {
-      this.el.object3D.lookAt(this.targetPosition);
-    }
+    // Make camera look at the target
+    this.cameraEl.object3D.lookAt(this.lookTarget);
   }
 });

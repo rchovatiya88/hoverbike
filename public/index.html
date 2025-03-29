@@ -19,6 +19,7 @@
         <script src="components/game-manager.js"></script>
         <script src="components/simple-navmesh-constraint.js"></script>
         <script src="components/model-camera-fix.js"></script>
+        <script src="components/third-person-camera.js"></script>
 
         <style>
             body {
@@ -179,31 +180,45 @@
                 color="#7BC8A4"
             ></a-plane>
 
-            <!-- Player entity with third-person setup -->
+            <!-- Player with third-person camera -->
             <a-entity
                 id="player"
+                gltf-model="#jetbike-model"
                 player-component="speed: 5; health: 100"
-                position="0 5 0"
+                weapon-component="damage: 25; cooldown: 0.5; automatic: true"
+                position="0 1.5 0"
                 rotation="0 0 0"
             >
-                <!-- The jetbike model with attached weapon -->
+                <!-- Weapons attached to the bike -->
                 <a-entity
-                    id="jetbike"
-                    gltf-model="#jetbike-model"
-                    weapon-component="damage: 25; cooldown: 0.5; automatic: true"
-                    position="0 0 0"
+                    id="weapon-mount-left"
+                    position="-0.5 0 -0.2"
                     rotation="0 0 0"
-                ></a-entity>
-
-                <!-- Third-person camera -->
+                >
+                </a-entity>
+                <a-entity
+                    id="weapon-mount-right"
+                    position="0.5 0 -0.2"
+                    rotation="0 0 0"
+                >
+                </a-entity>
+            </a-entity>
+            
+            <!-- Third-person camera -->
+            <a-entity 
+                id="camera-rig" 
+                third-person-camera="target: #player; distance: 6; height: 3; lookAtHeight: 1.5"
+                position="0 0 0" 
+                rotation="0 0 0"
+            >
                 <a-camera
                     id="camera"
-                    position="0 2 5"
-                    rotation="0 180 0"
-                    third-person-camera="target: #player; distance: 5; height: 2; smoothing: 0.1"
                     look-controls="reverseMouseDrag: false; touchEnabled: true; pointerLockEnabled: true; magicWindowTrackingEnabled: false"
                     wasd-controls="enabled: false"
-                ></a-camera>
+                    position="0 3 6"
+                    rotation="-15 0 0"
+                >
+                </a-camera>
             </a-entity>
             <!-- Sky -->
             <a-sky color="#88CCEE"></a-sky>
