@@ -64,19 +64,20 @@ AFRAME.registerComponent('third-person-camera', {
     const idealPosition = new THREE.Vector3();
 
     // Get the direction the target is facing (assuming -Z is forward)
-    const direction = new THREE.Vector3(0, 0, 1);
+    const direction = new THREE.Vector3(0, 0, -1); // -Z is forward in A-Frame
     direction.applyQuaternion(targetObj.quaternion);
 
     // Position the camera behind the target based on direction
     idealPosition.copy(this.targetPosition)
-      .sub(direction.multiplyScalar(this.data.distance))
+      .add(direction.multiplyScalar(-this.data.distance)) // Negative because we want to be behind
       .add(new THREE.Vector3(0, this.data.height, 0));
 
-    // Smooth camera movement with damping
-    this.el.object3D.position.lerp(idealPosition, this.data.damping * (delta/16.6));
+    // Apply damping based on delta time for smoother movement
+    const dampingFactor = Math.min(this.data.damping * (delta/16.6), 1.0);
+    this.el.object3D.position.lerp(idealPosition, dampingFactor);
 
     // Make camera look at target plus height offset
-    this.cameraEl.object3D.lookAt(this.targetPosition);
+    this.el.object3D.lookAt(this.targetPosition);
   },
 
   handleCollision: function(idealPosition) {

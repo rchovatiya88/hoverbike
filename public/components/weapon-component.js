@@ -22,6 +22,7 @@ AFRAME.registerComponent('weapon-component', {
     this.isReloading = false;
     this.reloadTimeout = null;
     this.mouse = { x: 0, y: 0 };
+    this.ammoNeedsUpdate = false; // Flag to indicate ammo display needs updating
 
     // Mouse event listeners
     this.onMouseDown = this.onMouseDown.bind(this);
@@ -155,8 +156,7 @@ AFRAME.registerComponent('weapon-component', {
     // Handle ammo
     if (!this.data.infiniteAmmo) {
       this.data.ammo--;
-      this.updateAmmoDisplay();
-
+      this.ammoNeedsUpdate = true; // Set flag to update ammo display
       if (this.data.ammo <= 0) {
         this.reload();
         return;
@@ -278,17 +278,21 @@ AFRAME.registerComponent('weapon-component', {
     this.reloadTimeout = setTimeout(() => {
       this.data.ammo = this.data.maxAmmo;
       this.isReloading = false;
-      this.updateAmmoDisplay();
+      this.ammoNeedsUpdate = true; // Set flag to update ammo display after reload
       console.log('Reload complete');
     }, this.data.reloadTime * 1000);
   },
 
   updateAmmoDisplay: function() {
-    const ammoDisplay = document.getElementById('ammo-display');
-    if (ammoDisplay) {
-      ammoDisplay.textContent = this.data.infiniteAmmo ? 
-        `∞ / ∞` : 
-        `${this.data.ammo} / ${this.data.maxAmmo}`;
+    try {
+      const ammoDisplay = document.getElementById('ammo-display');
+      if (ammoDisplay) {
+        ammoDisplay.textContent = this.data.infiniteAmmo ? 
+          `∞ / ∞` : 
+          `${this.data.ammo} / ${this.data.maxAmmo}`;
+      }
+    } catch (error) {
+      console.log('Ammo display update error:', error);
     }
   },
 
@@ -311,6 +315,11 @@ AFRAME.registerComponent('weapon-component', {
 
     // Update bullet positions
     this.updateBullets(time, delta);
+    // Regularly update ammo display
+    if (this.ammoNeedsUpdate) {
+      this.updateAmmoDisplay();
+      this.ammoNeedsUpdate = false;
+    }
   },
 
   remove: function() {
