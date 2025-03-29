@@ -215,7 +215,11 @@
                     src="/models/hoverbikewithavi.glb"
                 ></a-asset-item>
                 <!-- Simple enemy model (box for now) -->
-                <a-mixin
+                <a-mixin id="enemy-mixin"
+                    geometry="primitive: box; width: 1; height: 1; depth: 1"
+                    material="color: red"
+                    scale="0.5 0.5 0.5"
+                ></a-mixin>
 
             <div id="debug-overlay" style="position: absolute; top: 60px; left: 20px; background-color: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 5px; font-family: monospace; z-index: 100; border: 2px solid #4287f5;">
                 <div><strong>Debug Information:</strong></div>
@@ -233,12 +237,6 @@
                     <strong>Press N key to test North Wall orientation</strong>
                 </div>
             </div>
-
-                    id="enemy-mixin"
-                    geometry="primitive: box; width: 1; height: 1; depth: 1"
-                    material="color: red"
-                    scale="0.5 0.5 0.5"
-                ></a-mixin>
             </a-assets>
             <!-- Environment -->
             <a-plane

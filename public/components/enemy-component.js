@@ -287,42 +287,41 @@ if (!AFRAME.components['enemy-component']) {
     },
     setupYukaAI: function() {
     try {
-      if (!window.YUKA) {
-        console.error('YUKA library not found. AI navigation will not work.');
-        return;
-      }
+      // Get a reference to the game manager's entity manager
+      const gameManager = document.querySelector('[game-manager]');
 
-      // Create the YUKA entity manager
-      this.entityManager = new YUKA.EntityManager();
+      if (gameManager && gameManager.components && gameManager.components['game-manager']) {
+        const entityManager = gameManager.components['game-manager'].entityManager;
 
-      // Create a vehicle for the enemy
-      this.vehicle = new YUKA.Vehicle();
-      this.vehicle.maxSpeed = this.data.speed;
+        if (entityManager) {
+          // Create a vehicle for the enemy
+          this.vehicle = new YUKA.Vehicle();
+          this.vehicle.position.set(
+            this.el.object3D.position.x,
+            this.el.object3D.position.y,
+            this.el.object3D.position.z
+          );
+          this.vehicle.maxSpeed = this.data.speed;
+          this.vehicle.maxForce = 10;
 
-      // Link the YUKA Vehicle with the A-Frame entity
-      const position = new THREE.Vector3();
-      this.el.object3D.getWorldPosition(position);
-      this.vehicle.position.set(position.x, position.y, position.z);
+          // Add behaviors for the entity
+          this.seekBehavior = new YUKA.SeekBehavior();
+          this.separationBehavior = new YUKA.SeparationBehavior();
+          this.separationBehavior.weight = 2;
 
-      // Store a reference to the A-Frame entity on the YUKA vehicle
-      this.vehicle.userData = { 
-        el: this.el,
-        target: null // Initialize target as null to prevent errors
-      };
+          this.vehicle.steering.add(this.seekBehavior);
+          this.vehicle.steering.add(this.separationBehavior);
 
-      // Get player reference for targeting
-      const player = document.getElementById('player');
-      if (player) {
-        this.vehicle.userData.target = player;
+          // Add to entity manager
+          entityManager.add(this.vehicle);
+
+          this.currentState = 'idle';
+        } else {
+          console.error('Entity manager not found in game manager');
+        }
       } else {
-        console.warn('Player entity not found for enemy targeting');
+        console.error('Game manager component not properly initialized');
       }
-
-      // Update the matrix
-      this.vehicle.updateWorldMatrix();
-
-      // Add the vehicle to the entity manager
-      this.entityManager.add(this.vehicle);
     } catch (error) {
       console.error('Error setting up Yuka AI:', error);
     }
@@ -820,7 +819,7 @@ function createParticles(scene, position, color, count, lifespan) {
       if (elapsed >= lifespan) {
         scene.removeChild(particle);
         particle.removeEventListener('tick', tick);
-      }
+      }      }
     };
 
     particle.addEventListener('tick', tick);
