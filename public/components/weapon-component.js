@@ -37,61 +37,49 @@ if (!AFRAME.components['weapon-component']) {
     },
 
     createWeaponModel: function() {
-    try {
-      // Check if we're dealing with a jetbike or regular weapon
-      const isJetbike = this.el.closest('#player') !== null;
+      try {
+        // Create a simple weapon model if none exists
+        const weaponEntity = document.createElement('a-entity');
+        weaponEntity.setAttribute('position', '0.4 -0.2 -0.5');
 
-      if (isJetbike) {
-        // For jetbike, we don't create a visible weapon model
-        // Just create a simple invisible object to hold the muzzle flash
-        const weaponObject = new THREE.Group();
-        this.el.setObject3D('mesh', weaponObject);
+        const weaponBarrel = document.createElement('a-box');
+        weaponBarrel.setAttribute('color', '#333333');
+        weaponBarrel.setAttribute('height', '0.1');
+        weaponBarrel.setAttribute('width', '0.1');
+        weaponBarrel.setAttribute('depth', '0.5');
+        weaponBarrel.setAttribute('position', '0 0 -0.25');
 
-        // Add a simple muzzle flash (yellow sphere, initially hidden)
-        const flashGeometry = new THREE.SphereGeometry(0.05, 8, 8);
-        const flashMaterial = new THREE.MeshBasicMaterial({
-          color: 0xffff00,
-          transparent: true,
-          opacity: 0.8
-        });
-        this.muzzleFlash = new THREE.Mesh(flashGeometry, flashMaterial);
-        this.muzzleFlash.visible = false; // Initially hidden
-        this.muzzleFlash.position.set(0, 0, -1.0); // At the front
-        weaponObject.add(this.muzzleFlash);
-      } else {
-        // Create a simple weapon model (a red box)
-        const weaponGeometry = new THREE.BoxGeometry(0.2, 0.2, 1);
-        const weaponMaterial = new THREE.MeshStandardMaterial({
-          color: 0xff0000,
-          metalness: 0.8,
-          roughness: 0.2
-        });
-        const weaponMesh = new THREE.Mesh(weaponGeometry, weaponMaterial);
+        const weaponBody = document.createElement('a-box');
+        weaponBody.setAttribute('color', '#666666');
+        weaponBody.setAttribute('height', '0.15');
+        weaponBody.setAttribute('width', '0.12');
+        weaponBody.setAttribute('depth', '0.2');
+        weaponBody.setAttribute('position', '0 -0.05 0');
 
-        // Position the weapon model in front of the camera/player
-        weaponMesh.position.set(0, 0, -0.5);
+        weaponEntity.appendChild(weaponBarrel);
+        weaponEntity.appendChild(weaponBody);
 
-        // Add the weapon model to the entity
-        this.el.setObject3D('mesh', weaponMesh);
+        this.el.appendChild(weaponEntity);
 
-        // Add a simple muzzle flash (yellow sphere, initially hidden)
-        const flashGeometry = new THREE.SphereGeometry(0.05, 8, 8);
-        const flashMaterial = new THREE.MeshBasicMaterial({
-          color: 0xffff00,
-          transparent: true,
-          opacity: 0.8
-        });
-        this.muzzleFlash = new THREE.Mesh(flashGeometry, flashMaterial);
-        this.muzzleFlash.visible = false; // Initially hidden
-        this.muzzleFlash.position.set(0, 0, -1.0); // At the end of the weapon
-        weaponMesh.add(this.muzzleFlash);
+        // Store reference to weapon entity
+        this.weaponEntity = weaponEntity;
+      } catch (error) {
+        console.error('Error creating weapon model:', error);
+        // Create a fallback minimal weapon if error occurs
+        try {
+          const fallbackWeapon = document.createElement('a-box');
+          fallbackWeapon.setAttribute('color', '#FF5733');
+          fallbackWeapon.setAttribute('height', '0.1');
+          fallbackWeapon.setAttribute('width', '0.1');
+          fallbackWeapon.setAttribute('depth', '0.3');
+          fallbackWeapon.setAttribute('position', '0.4 -0.2 -0.5');
+          this.el.appendChild(fallbackWeapon);
+          this.weaponEntity = fallbackWeapon;
+        } catch (fallbackError) {
+          console.error('Could not create fallback weapon model:', fallbackError);
+        }
       }
-
-      console.log('Weapon model created');
-    } catch (error) {
-      console.error('Error creating weapon model:', error);
-    }
-  },
+    },
 
     createMuzzleFlash: function () {
       // Create muzzle flash
