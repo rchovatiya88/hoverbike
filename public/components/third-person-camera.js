@@ -111,15 +111,10 @@ AFRAME.registerComponent('third-person-camera', {
     // Get the camera entity
     const camera = this.el.querySelector('[camera]') || this.el;
 
-    // Look at target with slight offset based on movement
-    const lookTarget = targetPosition.clone();
-    if (targetVelocity && targetVelocity.length() > 5) {
-      // Add a small anticipation offset in the direction of travel
-      lookTarget.add(targetVelocity.clone().normalize().multiplyScalar(speedFactor * 1.5));
-    }
-
-    // Apply smooth look
-    camera.object3D.lookAt(lookTarget);
+    // Look at target with slight adjustment for better framing
+    const lookAtPos = targetPosition.clone();
+    lookAtPos.y = targetPosition.y + this.data.lookAtHeight * 0.5; // Adjust vertical look position
+    camera.object3D.lookAt(lookAtPos);
   },
 
   handleCollision: function(idealPosition) {
