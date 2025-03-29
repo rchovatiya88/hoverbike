@@ -2,7 +2,8 @@
 /**
  * Component to handle camera positioning for models without camera nodes
  */
-AFRAME.registerComponent('model-camera-fix', {
+if (!AFRAME.components['model-camera-fix']) {
+  AFRAME.registerComponent('model-camera-fix', {
   schema: {
     cameraOffset: {type: 'vec3', default: {x: 0, y: 1.5, z: 0}}
   },
@@ -20,4 +21,5 @@ AFRAME.registerComponent('model-camera-fix', {
       console.log('Camera position set to:', this.data.cameraOffset);
     }
   }
-});
+  });
+}

@@ -2,7 +2,8 @@
 /**
  * Third-person camera component that follows the player entity
  */
-AFRAME.registerComponent('third-person-camera', {
+if (!AFRAME.components['third-person-camera']) {
+  AFRAME.registerComponent('third-person-camera', {
   schema: {
     target: { type: 'selector', default: '#player' },
     distance: { type: 'number', default: 6 },
@@ -76,4 +77,5 @@ AFRAME.registerComponent('third-person-camera', {
     // Make camera look at the target
     this.cameraEl.object3D.lookAt(this.lookTarget);
   }
-});
+  });
+}
