@@ -217,3 +217,226 @@ AFRAME.registerComponent('player-component', {
 function degToRad(degrees) {
   return degrees * (Math.PI / 180);
 }
+AFRAME.registerComponent('player-component', {
+  schema: {
+    speed: { type: 'number', default: 5 },
+    health: { type: 'number', default: 100 },
+    canMove: { type: 'boolean', default: true }
+  },
+
+  init: function () {
+    // Store initial health
+    this.health = this.data.health;
+    this.isDead = false;
+    this.isSprinting = false;
+    this.velocity = new THREE.Vector3();
+    this.acceleration = new THREE.Vector3();
+    this.damping = 0.9;
+    this.rotationSpeed = 2.0;
+    
+    // Initialize camera reference
+    this.camera = document.getElementById('camera');
+    if (!this.camera) {
+      console.error('Player component could not find camera!');
+    }
+
+    // Setup key bindings for movement
+    this.keys = {
+      KeyW: false,
+      KeyA: false,
+      KeyS: false,
+      KeyD: false,
+      KeyQ: false,
+      KeyE: false,
+      ShiftLeft: false
+    };
+
+    // Add event listeners for key presses
+    this.addKeyListeners();
+    
+    // Setup the UI elements
+    this.setupUI();
+    
+    // Add a small wobble effect for hover
+    this.addHoverEffect();
+  },
+
+  addKeyListeners: function() {
+    // Key down listener
+    this.keyDownHandler = (e) => {
+      if (this.keys.hasOwnProperty(e.code)) {
+        this.keys[e.code] = true;
+        if (e.code === 'ShiftLeft') {
+          this.isSprinting = true;
+        }
+      }
+    };
+    
+    // Key up listener
+    this.keyUpHandler = (e) => {
+      if (this.keys.hasOwnProperty(e.code)) {
+        this.keys[e.code] = false;
+        if (e.code === 'ShiftLeft') {
+          this.isSprinting = false;
+        }
+      }
+    };
+    
+    window.addEventListener('keydown', this.keyDownHandler);
+    window.addEventListener('keyup', this.keyUpHandler);
+  },
+  
+  setupUI: function() {
+    this.healthBar = document.getElementById('health-bar');
+    this.updateHealthUI();
+  },
+  
+  addHoverEffect: function() {
+    // Add subtle hover bob to the player
+    const initialY = this.el.object3D.position.y;
+    this.hoverData = {
+      amplitude: 0.1,
+      frequency: 1.5,
+      initialY: initialY,
+      time: 0
+    };
+  },
+
+  updateHealthUI: function() {
+    if (this.healthBar) {
+      const healthPercent = (this.health / this.data.health) * 100;
+      this.healthBar.style.width = healthPercent + '%';
+      
+      // Change color based on health
+      if (healthPercent > 60) {
+        this.healthBar.style.backgroundColor = '#0f0'; // Green
+      } else if (healthPercent > 30) {
+        this.healthBar.style.backgroundColor = '#ff0'; // Yellow
+      } else {
+        this.healthBar.style.backgroundColor = '#f00'; // Red
+      }
+    }
+  },
+  
+  takeDamage: function(amount) {
+    if (this.isDead) return;
+    
+    this.health -= amount;
+    this.updateHealthUI();
+    
+    // Show damage overlay
+    const damageOverlay = document.getElementById('damage-overlay');
+    if (damageOverlay) {
+      damageOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+      setTimeout(() => {
+        damageOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0)';
+      }, 300);
+    }
+    
+    if (this.health <= 0) {
+      this.die();
+    }
+  },
+  
+  die: function() {
+    this.isDead = true;
+    this.health = 0;
+    this.updateHealthUI();
+    
+    // Notify game manager
+    const gameManager = document.querySelector('[game-manager]');
+    if (gameManager && gameManager.components['game-manager']) {
+      gameManager.components['game-manager'].playerDied();
+    }
+  },
+
+  updateMovement: function(dt) {
+    if (this.isDead || !this.data.canMove) return;
+    
+    const rotationSpeed = this.rotationSpeed;
+    const currentSpeed = this.isSprinting ? this.data.speed * 1.5 : this.data.speed;
+    
+    // Get camera rotation for movement direction
+    const cameraRotation = this.camera ? this.camera.object3D.rotation.y : 0;
+    
+    // Reset velocity each frame
+    this.velocity.set(0, 0, 0);
+    
+    // Calculate movement vector based on keys and camera rotation
+    if (this.keys.KeyW) {
+      this.velocity.z -= Math.cos(cameraRotation) * currentSpeed;
+      this.velocity.x -= Math.sin(cameraRotation) * currentSpeed;
+    }
+    if (this.keys.KeyS) {
+      this.velocity.z += Math.cos(cameraRotation) * currentSpeed;
+      this.velocity.x += Math.sin(cameraRotation) * currentSpeed;
+    }
+    if (this.keys.KeyA) {
+      this.velocity.z += Math.sin(cameraRotation) * currentSpeed;
+      this.velocity.x -= Math.cos(cameraRotation) * currentSpeed;
+    }
+    if (this.keys.KeyD) {
+      this.velocity.z -= Math.sin(cameraRotation) * currentSpeed;
+      this.velocity.x += Math.cos(cameraRotation) * currentSpeed;
+    }
+    
+    // Vertical movement (Q/E for up/down)
+    if (this.keys.KeyQ) {
+      this.velocity.y += currentSpeed;
+    }
+    if (this.keys.KeyE) {
+      this.velocity.y -= currentSpeed;
+    }
+    
+    // Apply velocity to position
+    this.el.object3D.position.x += this.velocity.x * dt;
+    this.el.object3D.position.y += this.velocity.y * dt;
+    this.el.object3D.position.z += this.velocity.z * dt;
+    
+    // Apply hover effect
+    this.updateHoverEffect(dt);
+    
+    // Update player rotation to face movement direction
+    if (this.velocity.length() > 0.1) {
+      // Calculate target rotation
+      const targetRotation = Math.atan2(this.velocity.x, this.velocity.z);
+      
+      // Current rotation
+      let currentRotation = this.el.object3D.rotation.y;
+      
+      // Smoothly interpolate rotation
+      const delta = targetRotation - currentRotation;
+      let rotDelta = delta;
+      
+      // Handle circular wrap-around
+      if (delta > Math.PI) rotDelta = delta - Math.PI * 2;
+      if (delta < -Math.PI) rotDelta = delta + Math.PI * 2;
+      
+      // Apply smooth rotation
+      this.el.object3D.rotation.y += rotDelta * rotationSpeed * dt;
+    }
+  },
+  
+  updateHoverEffect: function(dt) {
+    if (!this.hoverData) return;
+    
+    this.hoverData.time += dt * this.hoverData.frequency;
+    const hoverOffset = Math.sin(this.hoverData.time) * this.hoverData.amplitude;
+    
+    // Apply subtle hover effect to Y position
+    this.el.object3D.position.y = this.hoverData.initialY + hoverOffset;
+  },
+
+  tick: function(time, deltaTime) {
+    const dt = deltaTime / 1000;
+    
+    // Update player movement
+    this.updateMovement(dt);
+  },
+  
+  remove: function() {
+    // Clean up event listeners
+    window.removeEventListener('keydown', this.keyDownHandler);
+    window.removeEventListener('keyup', this.keyUpHandler);
+  }
+});

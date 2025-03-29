@@ -163,12 +163,19 @@ if (!AFRAME.components['weapon-component']) {
     fire: function () {
       if (!this.canFire) return;
 
+      // Add cooldown control
+      const now = Date.now();
+      if (now - this.lastFired < this.data.cooldown * 1000) {
+        return;
+      }
+      this.lastFired = now;
+
       // Check if game is running
       const gameManager = document.querySelector('[game-manager]');
       if (!gameManager || !gameManager.components['game-manager'] || !gameManager.components['game-manager'].gameStarted) return;
 
       // Handle ammo
-      if (this.currentAmmo <= 0) {
+      if (this.currentAmmo <= 0 && !this.data.infiniteAmmo) {
         // Play empty gun sound (removed)
         return;
       }
@@ -195,8 +202,6 @@ if (!AFRAME.components['weapon-component']) {
       direction.applyQuaternion(camera.object3D.quaternion);
       direction.normalize();
 
-      console.log('Firing weapon - Direction:', direction);
-
       // Apply some randomness for weapon accuracy
       const accuracy = this.data.accuracy;
       const spread = (1 - accuracy) * 0.1;
@@ -205,7 +210,8 @@ if (!AFRAME.components['weapon-component']) {
       direction.z += (Math.random() - 0.5) * spread;
       direction.normalize();
 
-      this.raycaster.ray.direction.copy(direction);
+      // Set the ray origin to the camera position
+      this.raycaster.set(camera.object3D.getWorldPosition(new THREE.Vector3()), direction);
 
       // Set up offset rays for better hit detection
       for (let i = 0; i < this.offsetRays.length; i++) {

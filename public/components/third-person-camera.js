@@ -63,7 +63,8 @@ AFRAME.registerComponent('third-person-camera', {
     if (!this.data.target || !this.cameraEl) return;
     
     const dt = delta / 1000;
-    const smoothing = Math.min(this.data.smoothing * dt, 1.0);
+    // Increase minimum smoothing for better stability
+    const smoothing = Math.max(0.1, Math.min(this.data.smoothing * dt, 0.9));
     
     // Cache frequently accessed properties
     const distance = this.data.distance;
@@ -83,7 +84,7 @@ AFRAME.registerComponent('third-person-camera', {
     this.cameraPosition.z = this.targetPosition.z - Math.cos(this.targetRotation.y) * distance;
     this.cameraPosition.y = this.targetPosition.y + height;
     
-    // Update rig position with smoothing
+    // Use smoother movement for the camera rig
     this.el.object3D.position.lerp(this.targetPosition, smoothing);
     
     // Calculate camera offset from target (relative to rig)
@@ -93,6 +94,7 @@ AFRAME.registerComponent('third-person-camera', {
     this.cameraEl.object3D.position.lerp(cameraOffset, smoothing);
     
     // Make camera look at the target
-    this.cameraEl.object3D.lookAt(this.lookTarget);
+    const lookPos = new THREE.Vector3().copy(this.lookTarget);
+    this.cameraEl.object3D.lookAt(lookPos);
   }
 });
