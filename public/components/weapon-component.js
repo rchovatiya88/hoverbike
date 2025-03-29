@@ -124,7 +124,7 @@ if (!AFRAME.components['weapon-component']) {
 
       // Check if we have ammo
       if (this.data.ammo === 0) {
-        this.el.components.sound__empty.playSound();
+        //this.el.components.sound__empty.playSound(); //Commented out sound effect
         return;
       }
 
@@ -139,8 +139,9 @@ if (!AFRAME.components['weapon-component']) {
           this.data.ammo + " / ∞";
       }
 
-      // Play shooting sound
-      this.el.components.sound__shoot.playSound();
+      // Sound disabled
+      // Play gunshot sound
+      // this.el.components.sound__shoot.playSound();
 
       // Get camera and player position/direction for raycasting
       const camera = document.getElementById("camera").object3D;

@@ -128,6 +128,8 @@ if (!AFRAME.components['enemy-component']) {
           if (intersects.length > 0) {
             this.lastEnemyShot = now;
             this.createEnemyShootEffect(enemyPos, direction);
+            // Sound disabled
+            // this.playEnemyShootSound();
 
             if (this.playerEntity.components['player-component']) {
               this.playerEntity.components['player-component'].takeDamage(this.data.weaponDamage);
@@ -175,7 +177,7 @@ if (!AFRAME.components['enemy-component']) {
           line.material.dispose();
         }, 100);
 
-        this.playEnemyShootSound();
+        //this.playEnemyShootSound();
       } catch (error) {
         console.error('Error creating enemy shoot effect:', error);
       }
