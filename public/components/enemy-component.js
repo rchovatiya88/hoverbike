@@ -296,20 +296,22 @@ if (!AFRAME.components['enemy-component']) {
       // Create a vehicle for the enemy
       this.vehicle = new YUKA.Vehicle();
       this.vehicle.maxSpeed = this.data.speed;
-      this.vehicle.updateWorldMatrix();
 
       // Link the YUKA Vehicle with the A-Frame entity
-      this.vehicle.position.copy(this.el.object3D.position);
+      const position = new THREE.Vector3();
+      this.el.object3D.getWorldPosition(position);
+      this.vehicle.position.set(position.x, position.y, position.z);
 
-      // Store a reference to the A-Frame entity on the YUKA vehicle
-      // Fix: Ensure we're setting the reference correctly
-      this.vehicle.userData = { el: this.el };
+      // Store a reference to the entity in userData
+      this.vehicle.userData = { 
+        el: this.el 
+      };
+
+      // Update the matrix
+      this.vehicle.updateWorldMatrix();
 
       // Add the vehicle to the entity manager
       this.entityManager.add(this.vehicle);
-
-      // Debug
-      console.log('YUKA AI setup for enemy:', this.el.id);
     } catch (error) {
       console.error('Error setting up Yuka AI:', error);
     }

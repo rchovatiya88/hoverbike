@@ -38,19 +38,28 @@ if (!AFRAME.components['weapon-component']) {
 
     createWeaponModel: function () {
       try {
-        // Create an empty weapon group to hold effects only
+        // Create weapon group to hold geometry and effects
         this.weaponGroup = new THREE.Group();
 
-        // Set the empty group as our weapon object
-        if (this.weaponGroup instanceof THREE.Object3D) {
-          this.el.setObject3D('weapon', this.weaponGroup);
+        // Create a basic laser cannon model
+        const barrelGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.4, 8);
+        const barrelMaterial = new THREE.MeshStandardMaterial({
+          color: 0x888888,
+          metalness: 0.8,
+          roughness: 0.2
+        });
+        const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
+        barrel.rotation.x = Math.PI / 2; // Rotate to point forward
 
-          // For third-person mode, we only need effects
-          if (this.el.sceneEl.systems.camera && document.getElementById('camera-rig')) {
-            this.weaponGroup.visible = true; // Keep visible for effects
-          }
-        } else {
-          console.error('Failed to create valid THREE.Object3D for weapon group');
+        // Add barrel to weapon group
+        this.weaponGroup.add(barrel);
+
+        // Set the weapon group as our weapon object
+        this.el.setObject3D('weapon', this.weaponGroup);
+
+        // For third-person mode, we only need effects
+        if (this.el.sceneEl.systems.camera && document.getElementById('camera-rig')) {
+          this.weaponGroup.visible = true; // Keep visible for effects
         }
       } catch (error) {
         console.error('Error creating weapon model:', error);
