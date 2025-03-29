@@ -179,14 +179,8 @@
                 color="#7BC8A4"
             ></a-plane>
 
-            <!-- Player -->
-            <a-entity
-                id="player"
-                gltf-model="#jetbike-model"
-                player-component="speed: 5; health: 100"
-                model-camera-fix="cameraOffset: 0 1.8 -0.5"
-                position="0 5 0"
-            >
+            <!-- Player has weapon-->
+            <a-entity>
                 <a-camera
                     id="camera"
                     look-controls="reverseMouseDrag: false; touchEnabled: true; pointerLockEnabled: true; magicWindowTrackingEnabled: false"
@@ -195,6 +189,9 @@
                 >
                     <a-entity
                         id="weapon"
+                        gltf-model="#jetbike-model"
+                        model-camera-fix="cameraOffset: 0 1.8 -0.5"
+                        player-component="speed: 5; health: 100"
                         weapon-component="damage: 25; cooldown: 0.5; automatic: true"
                         position="0.2 -0.2 -0.3"
                     ></a-entity>
