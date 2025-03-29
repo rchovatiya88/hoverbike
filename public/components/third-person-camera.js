@@ -22,6 +22,7 @@ AFRAME.registerComponent('third-person-camera', {
     this.targetRotation = new THREE.Euler();
     this.cameraRotation = new THREE.Euler();
     this.collisionDetected = false;
+    this.isInitialized = false;
     this.raycaster = new THREE.Raycaster();
 
     // Initial setup
@@ -35,6 +36,9 @@ AFRAME.registerComponent('third-person-camera', {
     this.yaw.add(this.pitch);
     this.pitch.add(this.dolly);
     this.el.sceneEl.object3D.add(this.yaw);
+
+    // Create temporary vector for calculations
+    this.tempVector = new THREE.Vector3();
 
     console.log("Third-person camera initialized with target:", this.data.target);
   },
@@ -60,7 +64,7 @@ AFRAME.registerComponent('third-person-camera', {
     const idealPosition = new THREE.Vector3();
 
     // Get the direction the target is facing (assuming -Z is forward)
-    const direction = new THREE.Vector3(0, 0, -1);
+    const direction = new THREE.Vector3(0, 0, 1);
     direction.applyQuaternion(targetObj.quaternion);
 
     // Position the camera behind the target based on direction

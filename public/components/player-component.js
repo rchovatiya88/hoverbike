@@ -279,6 +279,7 @@ AFRAME.registerComponent('player-component', {
     const cameraEl = document.querySelector('[camera]');
     if (cameraEl) {
       const cameraObject = cameraEl.object3D;
+      // Use negative Z for proper forward direction
       const cameraDirection = new THREE.Vector3(0, 0, -1);
       cameraDirection.applyQuaternion(cameraObject.quaternion);
       cameraDirection.y = 0; // Keep movement on XZ plane
