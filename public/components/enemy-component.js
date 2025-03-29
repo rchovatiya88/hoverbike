@@ -11,46 +11,51 @@ if (!AFRAME.components['enemy-component']) {
       weaponDamage: { type: 'number', default: 15 },
       weaponCooldown: { type: 'number', default: 2 },
       weaponAccuracy: { type: 'number', default: 0.7 },
-      weaponRange: { type: 'number', default: 50 }
+      weaponRange: { type: 'number', default: 50 },
+      hitboxScale: { type: 'number', default: 1.0 } // Added hitbox scale
     },
     init: function() {
-      try {
-        this.lastEnemyShot = 0;
-        this.weaponRaycaster = new THREE.Raycaster();
+    try {
+      // Set up enemy properties
+      this.health = this.data.health;
+      this.isAlive = true;
+      this.playerEntity = document.getElementById('player');
 
-        this.health = this.data.health;
-        this.maxHealth = this.data.health;
-        this.isDead = false;
-        this.lastAttack = 0;
-        this.currentState = 'idle';
-        this.playerEntity = document.getElementById('player');
-        this.obstacleCheckInterval = 100;
-        this.lastObstacleCheck = 0;
-        this.stuckTime = 0;
-        this.stuckThreshold = 2000;
-        this.lastPosition = new THREE.Vector3();
-
-        this.minSeparationDistance = 2.0;
-        this.separationForce = 5.0;
-        this.nearbyEnemies = [];
-
-        this.hitboxSize = { width: 1.2, height: 1.8, depth: 1.2 };
-
-        this.createEnemyModel();
-        this.createHealthBar();
-        this.setupYukaAI();
-        this.lastDamageTime = 0;
-        const gameManager = document.querySelector('[game-manager]');
-        if (gameManager && gameManager.components['game-manager']) {
-          gameManager.components['game-manager'].registerEnemy(this);
-        }
-
-        this.hitbox = new THREE.Box3();
-        this.updateHitbox();
-      } catch (error) {
-        console.error('Error initializing enemy component:', error);
+      // Create a simple mesh for the enemy if none exists
+      if (!this.el.getObject3D('mesh')) {
+        // Create a simple mesh for visualization
+        const geometry = new THREE.SphereGeometry(0.5, 16, 16);
+        const material = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        const mesh = new THREE.Mesh(geometry, material);
+        this.el.setObject3D('mesh', mesh);
       }
-    },
+
+      // Create hitbox for the enemy (simplified)
+      this.hitboxSize = new THREE.Vector3(1, 1, 1);
+      this.hitboxCenter = new THREE.Vector3(0, 0, 0);
+      this.hitboxHelper = new THREE.Box3();
+      this.updateHitbox();
+
+      // Set up AI navigation (after mesh is created)
+      this.setupYukaAI();
+
+      // Get reference to the game manager
+      const gameManager = document.querySelector('[game-manager]');
+      if (gameManager && gameManager.components) {
+        // Call registerEnemy directly on the component instance
+        const gameManagerComponent = gameManager.components['game-manager'];
+        if (gameManagerComponent && typeof gameManagerComponent.registerEnemy === 'function') {
+          gameManagerComponent.registerEnemy(this.el);
+        } else {
+          console.error('Game manager component or registerEnemy function not found');
+        }
+      } else {
+        console.error('Error initializing enemy component: Game manager not found or not initialized');
+      }
+    } catch (error) {
+      console.error('Error initializing enemy component:', error);
+    }
+  },
     getDistanceTo: function(otherEnemy) {
       const myPos = this.el.object3D.position;
       const otherPos = otherEnemy.object3D.position;
@@ -279,34 +284,55 @@ if (!AFRAME.components['enemy-component']) {
       }
     },
     setupYukaAI: function() {
-      try {
-        this.vehicle = new YUKA.Vehicle();
-        const position = this.el.getAttribute('position');
-        this.vehicle.position.set(position.x, position.y, position.z);
-        this.lastPosition.copy(this.vehicle.position);
-        this.vehicle.maxSpeed = this.data.speed;
-        this.vehicle.maxForce = 10;
-        this.vehicle.mass = 1;
-
-        // Make sure the vehicle can move in all three dimensions
-        this.vehicle.canFly = true;
-
-        this.seekBehavior = new YUKA.SeekBehavior();
-        this.seekBehavior.active = false;
-        this.vehicle.steering.add(this.seekBehavior);
-
-        this.separationBehavior = new YUKA.SeparationBehavior();
-        this.separationBehavior.active = false;
-        this.vehicle.steering.add(this.separationBehavior);
-
-        const gameManager = document.querySelector('[game-manager]');
-        if (gameManager && gameManager.components['game-manager']) {
-          gameManager.components['game-manager'].entityManager.add(this.vehicle);
-        }
-      } catch (error) {
-        console.error('Error setting up Yuka AI:', error);
+    try {
+      // Create entity manager if it doesn't exist globally
+      if (!window.yukaEntityManager) {
+        window.yukaEntityManager = new YUKA.EntityManager();
+        window.yukaTime = new YUKA.Time();
       }
-    },
+
+      this.entityManager = window.yukaEntityManager;
+      this.time = window.yukaTime;
+
+      // Create a vehicle for the enemy
+      this.vehicle = new YUKA.Vehicle();
+
+      // Initialize position from element
+      const position = new THREE.Vector3();
+      this.el.object3D.getWorldPosition(position);
+      this.vehicle.position.set(position.x, position.y, position.z);
+
+      this.vehicle.maxSpeed = this.data.speed;
+      this.vehicle.maxForce = 50;
+
+      // Set the entity reference for animation updates
+      this.vehicle.userData.entity = this.el;
+
+      // Create the steering behaviors
+      this.seekBehavior = new YUKA.SeekBehavior(new YUKA.Vector3());
+      this.seekBehavior.weight = 1;
+
+      this.fleeBehavior = new YUKA.FleeBehavior(new YUKA.Vector3());
+      this.fleeBehavior.weight = 0.5;
+
+      // Initialize with empty obstacles array for now
+      this.obsAvoidBehavior = new YUKA.ObstacleAvoidanceBehavior([]);
+      this.obsAvoidBehavior.weight = 2;
+
+      // Add behaviors to vehicle
+      this.vehicle.steering.add(this.seekBehavior);
+      this.vehicle.steering.add(this.fleeBehavior);
+      this.vehicle.steering.add(this.obsAvoidBehavior);
+
+      // Add the vehicle to the entity manager
+      this.entityManager.add(this.vehicle);
+
+      // Debug
+      console.log('YUKA AI setup for enemy:', this.el.id);
+    } catch (error) {
+      console.error('Error setting up Yuka AI:', error);
+    }
+  },
     setState: function(state) {
       try {
         if (this.currentState === state) return;
@@ -569,59 +595,132 @@ if (!AFRAME.components['enemy-component']) {
       }
     },
     tick: function(time, delta) {
-      try {
-        const dt = delta / 1000;
-        this.updateAI(dt);
-        this.updateHitbox();
+    try {
+      if (!this.isAlive) return;
 
-        const healthBarContainer = this.el.querySelector('#health-bar-container');
-        if (healthBarContainer) {
-          healthBarContainer.setAttribute('look-at', '[camera]');
-        }
+      // Check if game is still running
+      const gameManager = document.querySelector('[game-manager]');
+      if (!gameManager || !gameManager.components['game-manager'] || !gameManager.components['game-manager'].gameStarted) return;
 
-        const timeSinceHit = performance.now() - this.lastDamageTime;
-        if (timeSinceHit < 300 && !this.isDead) {
-          const shakeMagnitude = 0.03;
-          this.el.object3D.position.x += (Math.random() - 0.5) * shakeMagnitude;
-          this.el.object3D.position.z += (Math.random() - 0.5) * shakeMagnitude;
-        }
-      } catch (error) {
-        console.error('Error in enemy tick:', error);
+      // Ensure we have needed references
+      if (!this.playerEntity) {
+        this.playerEntity = document.getElementById('player');
+        if (!this.playerEntity) return;
       }
-    },
-    updateHitbox: function() {
-      try {
-        const pos = this.el.object3D.position;
-        const halfWidth = this.hitboxSize.width / 2;
-        const halfDepth = this.hitboxSize.depth / 2;
-        const height = this.hitboxSize.height;
 
-        this.hitbox.min.set(
-          pos.x - halfWidth,
-          pos.y,
-          pos.z - halfDepth
-        );
-        this.hitbox.max.set(
-          pos.x + halfWidth,
-          pos.y + height,
-          pos.z + halfDepth
-        );
+      // Simple AI if YUKA isn't working - move toward player
+      if (!this.entityManager || !this.vehicle) {
+        // Get player position
+        const playerPos = this.playerEntity.object3D.position;
+        const enemyPos = this.el.object3D.position;
 
-        const hitboxHelper = this.el.querySelector('.hitbox-helper');
-        if (hitboxHelper) {
-          hitboxHelper.setAttribute('width', this.hitboxSize.width);
-          hitboxHelper.setAttribute('height', this.hitboxSize.height);
-          hitboxHelper.setAttribute('depth', this.hitboxSize.depth);
-          hitboxHelper.setAttribute('position', `0 ${this.hitboxSize.height/2} 0`);
+        // Calculate direction to player
+        const direction = new THREE.Vector3()
+          .subVectors(playerPos, enemyPos)
+          .normalize();
 
-          if (!hitboxHelper.hasAttribute('raycast-target')) {
-            hitboxHelper.setAttribute('raycast-target', 'false');
+        // Calculate distance to player
+        const distance = enemyPos.distanceTo(playerPos);
+
+        // Simple movement logic
+        if (distance > 3) {
+          // Move toward player
+          const moveSpeed = (this.data.speed || 2) * (delta / 1000);
+          this.el.object3D.position.add(direction.multiplyScalar(moveSpeed));
+
+          // Make enemy look at player
+          this.el.object3D.lookAt(playerPos);
+        }
+      } else {
+        // YUKA AI update
+        const dt = delta / 1000;
+        this.time.update(dt);
+        this.entityManager.update(dt);
+
+        // Update the entity's position based on the AI vehicle
+        if (this.vehicle) {
+          // Set the target for seeking behavior to be the player's position
+          const playerPos = this.playerEntity.object3D.position;
+          this.seekBehavior.target.set(playerPos.x, playerPos.y, playerPos.z);
+
+          // Calculate distance to player
+          const distance = this.el.object3D.position.distanceTo(playerPos);
+
+          // If close enough to player, switch to flee behavior
+          if (distance < 5) {
+            this.seekBehavior.weight = 0;
+            this.fleeBehavior.weight = 1;
+          } else {
+            this.seekBehavior.weight = 1;
+            this.fleeBehavior.weight = 0;
+          }
+
+          // Copy position from YUKA vehicle to A-Frame entity
+          this.el.object3D.position.copy(this.vehicle.position);
+
+          // Copy rotation (convert YUKA rotation to A-Frame)
+          if (this.vehicle.rotation) {
+            this.el.object3D.quaternion.copy(this.vehicle.rotation);
           }
         }
-      } catch (error) {
-        console.error('Error updating hitbox:', error);
       }
-    },
+
+      // Update hitbox for collision detection
+      this.updateHitbox();
+    } catch (error) {
+      console.error('Error in enemy tick:', error);
+    }
+  },
+    updateHitbox: function() {
+    try {
+      const mesh = this.el.getObject3D('mesh');
+
+      if (!mesh) {
+        // If no mesh exists yet, use a default hitbox
+        const position = new THREE.Vector3();
+        this.el.object3D.getWorldPosition(position);
+
+        this.hitboxCenter = position;
+        this.hitboxSize = new THREE.Vector3(1, 1, 1);
+
+        // Create a simple box hitbox around the entity position
+        this.hitboxHelper.setFromCenterAndSize(
+          this.hitboxCenter,
+          this.hitboxSize.clone().multiplyScalar(this.data.hitboxScale || 1.0)
+        );
+        return;
+      }
+
+      // Get the mesh's bounding box
+      const boundingBox = new THREE.Box3().setFromObject(mesh);
+
+      // Check that the bounding box is valid (not empty)
+      if (boundingBox.isEmpty()) {
+        // Use a default size if bounding box is invalid
+        this.hitboxSize = new THREE.Vector3(1, 1, 1);
+
+        const position = new THREE.Vector3();
+        this.el.object3D.getWorldPosition(position);
+        this.hitboxCenter = position;
+      } else {
+        // Get size and center from valid bounding box
+        const size = boundingBox.getSize(new THREE.Vector3());
+        const center = boundingBox.getCenter(new THREE.Vector3());
+
+        // Update hitbox with mesh bounds
+        this.hitboxSize = size;
+        this.hitboxCenter = center;
+      }
+
+      // Update the helper box
+      this.hitboxHelper.setFromCenterAndSize(
+        this.hitboxCenter,
+        this.hitboxSize.clone().multiplyScalar(this.data.hitboxScale || 1.0)
+      );
+    } catch (error) {
+      console.error('Error updating hitbox:', error);
+    }
+  },
     remove: function() {
       try {
         const gameManager = document.querySelector('[game-manager]');

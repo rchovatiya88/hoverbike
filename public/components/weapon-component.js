@@ -10,16 +10,19 @@ if (!AFRAME.components['weapon-component']) {
       range: { type: "number", default: 100 },
       accuracy: { type: "number", default: 0.9 },
       ammo: { type: "number", default: -1 }, // -1 for infinite
+      infiniteAmmo: { type: "boolean", default: true} // Added for ammo management
     },
 
     init: function () {
       this.isFiring = false;
       this.lastFired = 0;
+      this.currentAmmo = this.data.ammo;
       this.createWeaponModel();
       this.setupEventListeners();
       this.setupSound();
       this.muzzleFlash = null;
       this.createMuzzleFlash();
+      this.canFire = true; // Flag to control firing
 
       // Raycaster for weapon
       this.raycaster = new THREE.Raycaster();
@@ -120,53 +123,56 @@ if (!AFRAME.components['weapon-component']) {
     },
 
     fire: function () {
-      const now = Date.now();
-      if (now - this.lastFired < this.data.cooldown * 1000) return;
+      if (!this.canFire) return;
 
-      // Check if we have ammo
-      if (this.data.ammo === 0) {
-        //this.el.components.sound__empty.playSound(); //Commented out sound effect
+      // Check if game is running
+      const gameManager = document.querySelector('[game-manager]');
+      if (!gameManager || !gameManager.components['game-manager'] || !gameManager.components['game-manager'].gameStarted) return;
+
+      // Handle ammo
+      if (this.currentAmmo <= 0) {
+        // Play empty gun sound (removed)
         return;
       }
 
-      // Update last fired time
-      this.lastFired = now;
-
-      // Decrement ammo if not infinite
-      if (this.data.ammo > 0) {
-        this.data.ammo--;
-        // Update ammo display
-        document.getElementById("ammo-display").textContent = 
-          this.data.ammo + " / ∞";
+      // Update ammo if not infinite
+      if (!this.data.infiniteAmmo) {
+        this.currentAmmo--;
+        this.updateAmmoDisplay();
       }
 
-      // Sound disabled
-      // Play gunshot sound
-      // this.el.components.sound__shoot.playSound();
+      // Show muzzle flash
+      this.showMuzzleFlash();
 
-      // Get camera and player position/direction for raycasting
-      const camera = document.getElementById("camera").object3D;
-      const player = document.getElementById("player").object3D;
+      // For jetbike: get direction from camera (third-person view)
+      const camera = document.getElementById('camera');
 
-      // Set the raycaster to use the camera's position and direction
-      camera.getWorldPosition(this.raycaster.ray.origin);
-      camera.getWorldDirection(this.direction);
-      console.log("Firing weapon - Direction:", this.direction);
+      if (!camera) {
+        console.error('Camera not found for weapon firing');
+        return;
+      }
+
+      // Get the camera direction vector (forward direction)
+      const direction = new THREE.Vector3(0, 0, -1);
+      direction.applyQuaternion(camera.object3D.quaternion);
+      direction.normalize();
+
+      console.log('Firing weapon - Direction:', direction);
 
       // Apply some randomness for weapon accuracy
       const accuracy = this.data.accuracy;
       const spread = (1 - accuracy) * 0.1;
-      this.direction.x += (Math.random() - 0.5) * spread;
-      this.direction.y += (Math.random() - 0.5) * spread;
-      this.direction.z += (Math.random() - 0.5) * spread;
-      this.direction.normalize();
+      direction.x += (Math.random() - 0.5) * spread;
+      direction.y += (Math.random() - 0.5) * spread;
+      direction.z += (Math.random() - 0.5) * spread;
+      direction.normalize();
 
-      this.raycaster.ray.direction.copy(this.direction);
+      this.raycaster.ray.direction.copy(direction);
 
       // Set up offset rays for better hit detection
       for (let i = 0; i < this.offsetRays.length; i++) {
         const offsetDir = this.offsetRays[i];
-        offsetDir.copy(this.direction);
+        offsetDir.copy(direction);
         offsetDir.x += (Math.random() - 0.5) * spread * 2;
         offsetDir.y += (Math.random() - 0.5) * spread * 2;
         offsetDir.z += (Math.random() - 0.5) * spread * 2;
@@ -175,9 +181,13 @@ if (!AFRAME.components['weapon-component']) {
 
       // Raycast to find what we hit
       this.checkForHits();
+    },
 
-      // Flash muzzle effect
-      this.flashMuzzle();
+    updateAmmoDisplay: function() {
+      const ammoDisplay = document.getElementById("ammo-display");
+      if (ammoDisplay) {
+        ammoDisplay.textContent = this.currentAmmo + " / ∞";
+      }
     },
 
     checkForHits: function () {
@@ -282,6 +292,61 @@ if (!AFRAME.components['weapon-component']) {
       }, 50);
     },
 
+    showMuzzleFlash: function() {
+      // Only show muzzle flash if it exists
+      if (!this.muzzleFlash) {
+        // For jetbike, create muzzle flashes at weapon mount points
+        const leftMount = document.getElementById('weapon-mount-left');
+        const rightMount = document.getElementById('weapon-mount-right');
+
+        if (leftMount && rightMount && !this.leftFlash && !this.rightFlash) {
+          // Create simple flashes for both mounts
+          const flashGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+          const flashMaterial = new THREE.MeshBasicMaterial({
+            color: 0xffff00,
+            transparent: true,
+            opacity: 0.8
+          });
+
+          this.leftFlash = new THREE.Mesh(flashGeometry, flashMaterial);
+          this.rightFlash = new THREE.Mesh(flashGeometry, flashMaterial);
+
+          leftMount.object3D.add(this.leftFlash);
+          rightMount.object3D.add(this.rightFlash);
+        }
+
+        // Show the jetbike mount flashes
+        if (this.leftFlash) this.leftFlash.visible = true;
+        if (this.rightFlash) this.rightFlash.visible = true;
+
+        // Schedule to hide them
+        if (this.muzzleFlashTimeout) {
+          clearTimeout(this.muzzleFlashTimeout);
+        }
+
+        this.muzzleFlashTimeout = setTimeout(() => {
+          if (this.leftFlash) this.leftFlash.visible = false;
+          if (this.rightFlash) this.rightFlash.visible = false;
+        }, 50);
+
+        return;
+      }
+
+      // Original muzzle flash code for regular weapons
+      this.muzzleFlash.visible = true;
+
+      // Schedule to hide the muzzle flash
+      if (this.muzzleFlashTimeout) {
+        clearTimeout(this.muzzleFlashTimeout);
+      }
+
+      this.muzzleFlashTimeout = setTimeout(() => {
+        if (this.muzzleFlash) {
+          this.muzzleFlash.visible = false;
+        }
+      }, 50);
+    },
+
     tick: function (time, delta) {
       // Handle automatic firing
       if (this.isFiring && this.data.automatic) {
@@ -310,6 +375,14 @@ if (!AFRAME.components['weapon-component']) {
       if (this.muzzleFlash) {
         if (this.muzzleFlash.geometry) this.muzzleFlash.geometry.dispose();
         if (this.muzzleFlash.material) this.muzzleFlash.material.dispose();
+      }
+      if (this.leftFlash) {
+        if (this.leftFlash.geometry) this.leftFlash.geometry.dispose();
+        if (this.leftFlash.material) this.leftFlash.material.dispose();
+      }
+      if (this.rightFlash) {
+        if (this.rightFlash.geometry) this.rightFlash.geometry.dispose();
+        if (this.rightFlash.material) this.rightFlash.material.dispose();
       }
     }
   });

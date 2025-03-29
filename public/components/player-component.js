@@ -54,8 +54,22 @@ AFRAME.registerComponent('player-component', {
   },
 
   onKeyDown: function (event) {
-    if (this.keys.hasOwnProperty(event.code)) {
+    if (event.code in this.keys) {
       this.keys[event.code] = true;
+
+      // Prevent default for movement/action keys to avoid scrolling
+      if (['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyQ', 'KeyE', 'Space'].includes(event.code)) {
+        event.preventDefault();
+      }
+
+      // Handle space key for firing
+      if (event.code === 'Space') {
+        // Fire weapon directly
+        const weaponComponent = this.el.components['weapon-component'];
+        if (weaponComponent) {
+          weaponComponent.fire();
+        }
+      }
     }
   },
 
