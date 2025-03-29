@@ -274,14 +274,12 @@
                     console.log("Pointer locked");
                 } else {
                     console.log("Pointer unlocked");
-                    const gameManager =
-                        document.querySelector("[game-manager]");
-                    if (
-                        gameManager &&
-                        gameManager.components["game-manager"].gameStarted
-                    ) {
-                        const gameMessage =
-                            document.getElementById("game-message");
+                    const gameManager = document.querySelector("[game-manager]");
+                    const gameManagerComponent = gameManager && gameManager.components ? 
+                        gameManager.components["game-manager"] : null;
+                    
+                    if (gameManagerComponent && gameManagerComponent.gameStarted) {
+                        const gameMessage = document.getElementById("game-message");
                         gameMessage.style.display = "block";
                         gameMessage.innerHTML =
                             'Game Paused<br><button id="resume-button">Resume</button>';
