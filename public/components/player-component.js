@@ -16,7 +16,11 @@ AFRAME.registerComponent('player-component', {
     hoverDamping: { type: 'number', default: 0.95 },
     hoverForce: { type: 'number', default: 5 },
     hoverAmplitude: { type: 'number', default: 0.1 },
-    hoverFrequency: { type: 'number', default: 2 }
+    hoverFrequency: { type: 'number', default: 2 },
+    moveSpeed: {type: 'number', default: 5},
+    boostSpeed: {type: 'number', default: 10},
+    boostAcceleration: {type: 'number', default: 50}
+
   },
 
   init: function() {
@@ -45,6 +49,9 @@ AFRAME.registerComponent('player-component', {
 
     // Update health UI
     this.updateHealthBar();
+
+    // Add control hints to UI
+    this.addControlHints();
 
     console.log("Player component initialized");
   },
@@ -316,10 +323,6 @@ AFRAME.registerComponent('player-component', {
       );
     }
 
-    // Apply gravity if enabled
-    if (this.data.gravityEnabled && !this.isGrounded) {
-      this.acceleration.y -= this.data.gravity;
-    }
 
     // Update velocity with acceleration
     this.velocity.add(this.acceleration.clone().multiplyScalar(deltaSeconds));
@@ -429,5 +432,23 @@ AFRAME.registerComponent('player-component', {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     document.removeEventListener('mousemove', this.onMouseMove);
+  },
+
+  addControlHints: function() {
+    const hintsElement = document.createElement('div');
+    hintsElement.id = 'control-hints';
+    hintsElement.innerHTML = `
+      <h3>Jetbike Controls</h3>
+      <ul>
+        <li>W: Forward</li>
+        <li>S: Backward</li>
+        <li>A: Left</li>
+        <li>D: Right</li>
+        <li>Q: Up</li>
+        <li>E: Down</li>
+        <li>Shift: Boost</li>
+      </ul>
+    `;
+    document.body.appendChild(hintsElement);
   }
 });
