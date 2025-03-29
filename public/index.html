@@ -229,42 +229,97 @@
             ></a-plane>
 
             <!-- Walls -->
-            <!-- North Wall -->
-            <a-box
-                position="0 15 -25"
-                width="100"
-                height="30"
-                depth="1"
-                color="#8C8C8C"
-                shadow="cast: true; receive: true"
-            ></a-box>
-            <!-- South Wall -->
-            <a-box
-                position="0 15 25"
-                width="100"
-                height="30"
-                depth="1"
-                color="#8C8C8C"
-                shadow="cast: true; receive: true"
-            ></a-box>
-            <!-- East Wall -->
-            <a-box
-                position="50 15 0"
-                width="1"
-                height="30"
-                depth="50"
-                color="#8C8C8C"
-                shadow="cast: true; receive: true"
-            ></a-box>
-            <!-- West Wall -->
-            <a-box
-                position="-50 15 0"
-                width="1"
-                height="30"
-                depth="50"
-                color="#8C8C8C"
-                shadow="cast: true; receive: true"
-            ></a-box>
+            <!-- North Wall - Blue -->
+            <a-entity position="0 15 -25">
+                <a-box
+                    width="100"
+                    height="40"
+                    depth="1"
+                    color="#4287f5"
+                    shadow="cast: true; receive: true"
+                ></a-box>
+                <a-text
+                    value="NORTH WALL"
+                    position="0 5 0.6"
+                    rotation="0 0 0"
+                    color="white"
+                    align="center"
+                    width="50"
+                    scale="10 10 10"
+                ></a-text>
+            </a-entity>
+            
+            <!-- South Wall - Red -->
+            <a-entity position="0 15 25">
+                <a-box
+                    width="100"
+                    height="40"
+                    depth="1"
+                    color="#f54242"
+                    shadow="cast: true; receive: true"
+                ></a-box>
+                <a-text
+                    value="SOUTH WALL"
+                    position="0 5 -0.6"
+                    rotation="0 180 0"
+                    color="white"
+                    align="center"
+                    width="50"
+                    scale="10 10 10"
+                ></a-text>
+            </a-entity>
+            
+            <!-- East Wall - Green -->
+            <a-entity position="50 15 0">
+                <a-box
+                    width="1"
+                    height="40"
+                    depth="50"
+                    color="#42f563"
+                    shadow="cast: true; receive: true"
+                ></a-box>
+                <a-text
+                    value="EAST WALL"
+                    position="-0.6 5 0"
+                    rotation="0 -90 0"
+                    color="white"
+                    align="center"
+                    width="25"
+                    scale="10 10 10"
+                ></a-text>
+            </a-entity>
+            
+            <!-- West Wall - Yellow -->
+            <a-entity position="-50 15 0">
+                <a-box
+                    width="1"
+                    height="40"
+                    depth="50"
+                    color="#f5d442"
+                    shadow="cast: true; receive: true"
+                ></a-box>
+                <a-text
+                    value="WEST WALL"
+                    position="0.6 5 0"
+                    rotation="0 90 0"
+                    color="white"
+                    align="center"
+                    width="25"
+                    scale="10 10 10"
+                ></a-text>
+            </a-entity>
+
+            <!-- Height markers on walls -->
+            <a-entity position="0 0 -24.5">
+                <!-- North wall height markers -->
+                <a-text value="0m" position="-45 0 0" rotation="0 0 0" color="white" scale="5 5 5"></a-text>
+                <a-text value="5m" position="-45 5 0" rotation="0 0 0" color="white" scale="5 5 5"></a-text>
+                <a-text value="10m" position="-45 10 0" rotation="0 0 0" color="white" scale="5 5 5"></a-text>
+                <a-text value="15m" position="-45 15 0" rotation="0 0 0" color="white" scale="5 5 5"></a-text>
+                <a-text value="20m" position="-45 20 0" rotation="0 0 0" color="white" scale="5 5 5"></a-text>
+                <a-text value="25m" position="-45 25 0" rotation="0 0 0" color="white" scale="5 5 5"></a-text>
+                <a-text value="30m" position="-45 30 0" rotation="0 0 0" color="white" scale="5 5 5"></a-text>
+            </a-entity>
 
             <!-- Player with third-person camera -->
             <a-entity
@@ -290,12 +345,12 @@
                 </a-entity>
             </a-entity>
 
-            <!-- Third-person camera -->
+            <!-- Third-person camera (pointing toward north wall) -->
             <a-entity
                 id="camera-rig"
                 third-person-camera="target: #player; distance: 12; height: 4.5; lookAtHeight: 1.5; damping: 0.3"
                 position="0 0 0"
-                rotation="0 0 0"
+                rotation="0 180 0"
             >
                 <a-camera
                     id="camera"
