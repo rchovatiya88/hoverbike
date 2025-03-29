@@ -1,4 +1,3 @@
-
 /* global AFRAME, THREE */
 
 AFRAME.registerComponent('third-person-camera', {
@@ -48,55 +47,42 @@ AFRAME.registerComponent('third-person-camera', {
   },
 
   tick: function(time, delta) {
-    if (!this.data.target || !this.camera) return;
+    if (!this.data.target || !this.data.target.object3D) return;
 
-    const target = this.data.target.object3D;
-    if (!target) return;
+    // Get target position and rotation
+    const targetObj = this.data.target.object3D;
+    targetObj.getWorldPosition(this.targetPosition);
 
-    // Get target world position
-    target.getWorldPosition(this.targetPosition);
-    
-    // Update camera position with smooth damping
-    const idealOffset = new THREE.Vector3(0, this.data.height, this.data.distance);
-    idealOffset.applyQuaternion(target.quaternion);
-    idealOffset.add(this.targetPosition);
-    
-    // Camera collision detection
-    if (this.data.enableCollision) {
-      this.handleCollision(idealOffset);
-    }
-    
-    // Apply damping to camera position
-    const movementFactor = Math.min(delta / 1000 * 10 * this.data.damping, 1);
-    this.currentPosition.lerp(this.collisionDetected ? this.cameraPosition : idealOffset, movementFactor);
-    
-    // Look at target with height offset
-    const lookAtPosition = this.targetPosition.clone();
-    lookAtPosition.y += this.data.lookAtHeight;
-    
-    // Update camera rotation with smooth damping
-    this.yaw.position.copy(this.currentPosition);
-    this.dolly.lookAt(lookAtPosition);
-    
-    // Apply camera position and rotation
-    this.camera.position.set(0, 0, 0);
-    this.camera.rotation.set(0, 0, 0);
-    
-    // Update the camera rig
-    this.el.setAttribute('position', this.currentPosition);
-    
-    // Reset collision flag for next frame
-    this.collisionDetected = false;
+    // Adjust for look height
+    this.targetPosition.y += this.data.lookAtHeight;
+
+    // Calculate ideal camera position
+    const idealPosition = new THREE.Vector3();
+
+    // Get the direction the target is facing (assuming -Z is forward)
+    const direction = new THREE.Vector3(0, 0, -1);
+    direction.applyQuaternion(targetObj.quaternion);
+
+    // Position the camera behind the target based on direction
+    idealPosition.copy(this.targetPosition)
+      .sub(direction.multiplyScalar(this.data.distance))
+      .add(new THREE.Vector3(0, this.data.height, 0));
+
+    // Smooth camera movement with damping
+    this.el.object3D.position.lerp(idealPosition, this.data.damping * (delta/16.6));
+
+    // Make camera look at target plus height offset
+    this.cameraEl.object3D.lookAt(this.targetPosition);
   },
-  
+
   handleCollision: function(idealPosition) {
     // Direction from target to camera
     const direction = new THREE.Vector3().subVectors(idealPosition, this.targetPosition).normalize();
-    
+
     // Set up raycaster
     this.raycaster.set(this.targetPosition, direction);
     this.raycaster.far = this.data.distance + 1;
-    
+
     // Get collision objects
     const collisionObjects = [];
     this.el.sceneEl.object3D.traverse((node) => {
@@ -104,20 +90,20 @@ AFRAME.registerComponent('third-person-camera', {
         collisionObjects.push(node);
       }
     });
-    
+
     // Check for collisions
     const intersects = this.raycaster.intersectObjects(collisionObjects, true);
-    
+
     if (intersects.length > 0 && intersects[0].distance < this.data.distance) {
       // Collision detected, adjust camera position
       this.collisionDetected = true;
       const collisionDistance = Math.max(intersects[0].distance * 0.8, 2); // Keep some minimum distance
-      
+
       this.cameraPosition.copy(this.targetPosition)
         .add(direction.multiplyScalar(collisionDistance));
     }
   },
-  
+
   remove: function() {
     // Clean up
     if (this.yaw.parent) {

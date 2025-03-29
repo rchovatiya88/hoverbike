@@ -363,8 +363,8 @@ AFRAME.registerComponent('player-component', {
     // Sinusoidal hover motion
     const hoverOffset = Math.sin(this.hoverPhase) * this.data.hoverAmplitude;
 
-    // Apply hover to the Y position
-    this.el.object3D.position.y = this.data.hoverHeight + hoverOffset;
+    // Apply hover to the Y position with minimum height
+    this.el.object3D.position.y = Math.max(this.data.hoverHeight + hoverOffset, 2.5); // Increased minimum height
 
     // Slight roll/tilt based on movement
     if (this.moveDirection.x !== 0) {
