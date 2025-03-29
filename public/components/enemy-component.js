@@ -659,6 +659,36 @@ if (!AFRAME.components['enemy-component']) {
 
       // Update hitbox for collision detection
       this.updateHitbox();
+
+      if (this.vehicleSound) {
+        try {
+          // Update sound based on movement
+          const speed = this.vehicle ? this.vehicle.getSpeed() : 0;
+
+          // Ensure values are finite
+          const volume = THREE.MathUtils.clamp(
+            isFinite(speed) ? speed / (this.vehicle ? this.vehicle.maxSpeed : 1) : 0.1, 
+            0.1, 
+            1
+          );
+
+          const pitch = THREE.MathUtils.clamp(
+            isFinite(speed) ? 0.8 + speed / (this.vehicle ? this.vehicle.maxSpeed : 1) : 0.8, 
+            0.8, 
+            1.5
+          );
+
+          if (this.vehicleSound.isPlaying) {
+            this.vehicleSound.setVolume(volume);
+            if (this.vehicleSound.source && this.vehicleSound.source.playbackRate && 
+                isFinite(pitch)) {
+              this.vehicleSound.source.playbackRate.value = pitch;
+            }
+          }
+        } catch (error) {
+          console.error('Error updating enemy audio:', error);
+        }
+      }
     } catch (error) {
       console.error('Error in enemy tick:', error);
     }
