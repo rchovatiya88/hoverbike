@@ -38,6 +38,13 @@ if (!AFRAME.components['weapon-component']) {
 
     createWeaponModel: function() {
     try {
+      // Ensure THREE is available
+      if (typeof THREE === 'undefined') {
+        console.error('THREE is not defined');
+        this.createFallbackWeapon();
+        return;
+      }
+      
       // Create a THREE.Group for the weapon
       this.weaponGroup = new THREE.Group();
       
@@ -49,12 +56,11 @@ if (!AFRAME.components['weapon-component']) {
       
       // Add the weapon group to the entity's object3D
       if (this.el && this.el.object3D) {
+        // Add the group directly to object3D
         this.el.object3D.add(this.weaponGroup);
         
-        // Create a simple reference entity for A-Frame compatibility
-        const weaponEntity = document.createElement('a-entity');
-        this.el.appendChild(weaponEntity);
-        this.weaponEntity = weaponEntity;
+        // Set a reference for the weaponEntity
+        this.weaponEntity = this.el;
         
         console.log("Weapon model created successfully");
       } else {
