@@ -2,7 +2,8 @@
 AFRAME.registerComponent('player-component', {
   schema: {
     speed: { type: 'number', default: 5 },
-    health: { type: 'number', default: 100 }
+    health: { type: 'number', default: 100 },
+    turnSpeed: { type: 'number', default: 2 }
   },
 
   init: function () {
@@ -20,6 +21,16 @@ AFRAME.registerComponent('player-component', {
       ShiftLeft: false // Boost
     };
 
+    // Reference to the jetbike model
+    this.jetbike = this.el.querySelector('#jetbike');
+    
+    // Reference to the camera rig
+    this.cameraRig = this.el.querySelector('#camera-rig');
+    this.camera = this.el.querySelector('#camera');
+    
+    // Direction the player is facing
+    this.yaw = 0;
+    
     // Health management
     this.currentHealth = this.data.health;
     this.healthBar = document.getElementById('health-bar');
@@ -41,8 +52,23 @@ AFRAME.registerComponent('player-component', {
     window.addEventListener('keydown', this.onKeyDown.bind(this));
     window.addEventListener('keyup', this.onKeyUp.bind(this));
     
+    // Mouse movement for camera
+    this.el.sceneEl.addEventListener('mousemove', this.onMouseMove.bind(this));
+    
     // Damage event
     this.el.addEventListener('damage', this.onDamage.bind(this));
+  },
+  
+  onMouseMove: function (event) {
+    // Update the jetbike rotation to follow the camera direction
+    if (document.pointerLockElement) {
+      const rotation = this.camera.getAttribute('rotation');
+      this.jetbike.setAttribute('rotation', {
+        x: 0,
+        y: rotation.y,
+        z: 0
+      });
+    }
   },
 
   createSounds: function () {

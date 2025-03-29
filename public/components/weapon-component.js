@@ -23,8 +23,11 @@ AFRAME.registerComponent('weapon-component', {
     this.ammoDisplay = document.getElementById('ammo-display');
     this.updateAmmoDisplay();
     
-    // Create weapon model
-    this.createWeaponModel();
+    // Get the camera for raycasting
+    this.camera = document.getElementById('camera');
+    
+    // Create weapon mounts on the jetbike
+    this.createWeaponMounts();
     
     // Create weapon sound effects
     this.createSoundEffects();
@@ -42,22 +45,62 @@ AFRAME.registerComponent('weapon-component', {
         this.reload();
       }
     });
+    
+    // Listen for model loaded event to attach weapon mounts
+    this.el.addEventListener('model-loaded', () => {
+      console.log('Jetbike model loaded, attaching weapons');
+      this.createWeaponMounts();
+    });
   },
   
-  createWeaponModel: function () {
-    // Gun model
-    const gun = document.createElement('a-box');
-    gun.setAttribute('width', '0.1');
-    gun.setAttribute('height', '0.1');
-    gun.setAttribute('depth', '0.3');
-    gun.setAttribute('position', '0 0 -0.15');
-    gun.setAttribute('color', '#222');
-    this.el.appendChild(gun);
+  createWeaponMounts: function () {
+    // Create weapon mounts on the sides of the jetbike
+    // Left weapon
+    const leftWeapon = document.createElement('a-entity');
+    leftWeapon.setAttribute('class', 'weapon-mount');
+    leftWeapon.setAttribute('position', '-0.5 0.2 -0.8');
     
-    // Muzzle flash (initially invisible)
-    const muzzleFlash = document.createElement('a-entity');
-    muzzleFlash.setAttribute('position', '0 0 -0.3');
-    muzzleFlash.setAttribute('visible', 'false');
+    // Left gun model
+    const leftGun = document.createElement('a-box');
+    leftGun.setAttribute('width', '0.1');
+    leftGun.setAttribute('height', '0.1');
+    leftGun.setAttribute('depth', '0.5');
+    leftGun.setAttribute('color', '#222');
+    leftWeapon.appendChild(leftGun);
+    
+    // Left muzzle flash
+    const leftMuzzleFlash = document.createElement('a-entity');
+    leftMuzzleFlash.setAttribute('class', 'muzzle-flash');
+    leftMuzzleFlash.setAttribute('position', '0 0 -0.3');
+    leftMuzzleFlash.setAttribute('visible', 'false');
+    leftWeapon.appendChild(leftMuzzleFlash);
+    
+    // Right weapon
+    const rightWeapon = document.createElement('a-entity');
+    rightWeapon.setAttribute('class', 'weapon-mount');
+    rightWeapon.setAttribute('position', '0.5 0.2 -0.8');
+    
+    // Right gun model
+    const rightGun = document.createElement('a-box');
+    rightGun.setAttribute('width', '0.1');
+    rightGun.setAttribute('height', '0.1');
+    rightGun.setAttribute('depth', '0.5');
+    rightGun.setAttribute('color', '#222');
+    rightWeapon.appendChild(rightGun);
+    
+    // Right muzzle flash
+    const rightMuzzleFlash = document.createElement('a-entity');
+    rightMuzzleFlash.setAttribute('class', 'muzzle-flash');
+    rightMuzzleFlash.setAttribute('position', '0 0 -0.3');
+    rightMuzzleFlash.setAttribute('visible', 'false');
+    rightWeapon.appendChild(rightMuzzleFlash);
+    
+    // Add weapon mounts to the jetbike
+    this.el.appendChild(leftWeapon);
+    this.el.appendChild(rightWeapon);
+    
+    // Store references to muzzle flashes
+    this.muzzleFlashes = [leftMuzzleFlash, rightMuzzleFlash];
     
     const muzzleLight = document.createElement('a-light');
     muzzleLight.setAttribute('type', 'point');
