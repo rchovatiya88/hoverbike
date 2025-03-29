@@ -302,10 +302,19 @@ if (!AFRAME.components['enemy-component']) {
       this.el.object3D.getWorldPosition(position);
       this.vehicle.position.set(position.x, position.y, position.z);
 
-      // Store a reference to the entity in userData
+      // Store a reference to the A-Frame entity on the YUKA vehicle
       this.vehicle.userData = { 
-        el: this.el 
+        el: this.el,
+        target: null // Initialize target as null to prevent errors
       };
+
+      // Get player reference for targeting
+      const player = document.getElementById('player');
+      if (player) {
+        this.vehicle.userData.target = player;
+      } else {
+        console.warn('Player entity not found for enemy targeting');
+      }
 
       // Update the matrix
       this.vehicle.updateWorldMatrix();

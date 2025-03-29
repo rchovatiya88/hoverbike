@@ -301,59 +301,29 @@ if (!AFRAME.components['weapon-component']) {
       }, 50);
     },
 
-    showMuzzleFlash: function() {
-      // Only show muzzle flash if it exists
-      if (!this.muzzleFlash) {
-        // For jetbike, create muzzle flashes at weapon mount points
-        const leftMount = document.getElementById('weapon-mount-left');
-        const rightMount = document.getElementById('weapon-mount-right');
-
-        if (leftMount && rightMount && !this.leftFlash && !this.rightFlash) {
-          // Create simple flashes for both mounts
-          const flashGeometry = new THREE.SphereGeometry(0.1, 8, 8);
-          const flashMaterial = new THREE.MeshBasicMaterial({
-            color: 0xffff00,
-            transparent: true,
-            opacity: 0.8
-          });
-
-          this.leftFlash = new THREE.Mesh(flashGeometry, flashMaterial);
-          this.rightFlash = new THREE.Mesh(flashGeometry, flashMaterial);
-
-          leftMount.object3D.add(this.leftFlash);
-          rightMount.object3D.add(this.rightFlash);
+    showMuzzleFlash: function () {
+      try {
+        if (!this.muzzleFlash) {
+          console.warn('Muzzle flash not initialized');
+          return;
         }
 
-        // Show the jetbike mount flashes
-        if (this.leftFlash) this.leftFlash.visible = true;
-        if (this.rightFlash) this.rightFlash.visible = true;
+        // Original muzzle flash code for regular weapons
+        this.muzzleFlash.visible = true;
 
-        // Schedule to hide them
+        // Schedule to hide the muzzle flash
         if (this.muzzleFlashTimeout) {
           clearTimeout(this.muzzleFlashTimeout);
         }
 
         this.muzzleFlashTimeout = setTimeout(() => {
-          if (this.leftFlash) this.leftFlash.visible = false;
-          if (this.rightFlash) this.rightFlash.visible = false;
+          if (this.muzzleFlash) {
+            this.muzzleFlash.visible = false;
+          }
         }, 50);
-
-        return;
+      } catch (error) {
+        console.error('Error showing muzzle flash:', error);
       }
-
-      // Original muzzle flash code for regular weapons
-      this.muzzleFlash.visible = true;
-
-      // Schedule to hide the muzzle flash
-      if (this.muzzleFlashTimeout) {
-        clearTimeout(this.muzzleFlashTimeout);
-      }
-
-      this.muzzleFlashTimeout = setTimeout(() => {
-        if (this.muzzleFlash) {
-          this.muzzleFlash.visible = false;
-        }
-      }, 50);
     },
 
     tick: function (time, delta) {
