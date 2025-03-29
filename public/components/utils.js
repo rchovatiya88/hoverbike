@@ -1,3 +1,115 @@
+
+// Utility Functions for A-Frame Game
+
+// Convert degrees to radians
+function degToRad(degrees) {
+  return degrees * (Math.PI / 180);
+}
+
+// Convert radians to degrees
+function radToDeg(radians) {
+  return radians * (180 / Math.PI);
+}
+
+// Get random number within range
+function getRandomInRange(min, max) {
+  return Math.random() * (max - min) + min;
+}
+
+// Get random integer within range
+function getRandomIntInRange(min, max) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+// Calculate distance between two A-Frame entities
+function getDistance(entity1, entity2) {
+  const pos1 = entity1.object3D.position;
+  const pos2 = entity2.object3D.position;
+  
+  return Math.sqrt(
+    Math.pow(pos1.x - pos2.x, 2) +
+    Math.pow(pos1.y - pos2.y, 2) +
+    Math.pow(pos1.z - pos2.z, 2)
+  );
+}
+
+// Get normalized direction vector from one entity to another
+function getDirectionVector(fromEntity, toEntity) {
+  const fromPos = fromEntity.object3D.position;
+  const toPos = toEntity.object3D.position;
+  
+  const direction = new THREE.Vector3(
+    toPos.x - fromPos.x,
+    toPos.y - fromPos.y,
+    toPos.z - fromPos.z
+  );
+  
+  return direction.normalize();
+}
+
+// Create particle effect at position
+function createParticles(scene, position, color, count, lifespan) {
+  for (let i = 0; i < count; i++) {
+    const particle = document.createElement('a-entity');
+    
+    // Random direction
+    const angle1 = Math.random() * Math.PI * 2;
+    const angle2 = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 2 + 1;
+    
+    const velocity = new THREE.Vector3(
+      Math.cos(angle1) * Math.cos(angle2) * speed,
+      Math.sin(angle2) * speed,
+      Math.sin(angle1) * Math.cos(angle2) * speed
+    );
+    
+    // Set attributes
+    particle.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
+    particle.setAttribute('geometry', 'primitive: sphere; radius: 0.1');
+    particle.setAttribute('material', `color: ${color}; shader: flat`);
+    
+    // Add to scene
+    scene.appendChild(particle);
+    
+    // Animate and remove
+    let elapsed = 0;
+    const tick = function(time, timeDelta) {
+      elapsed += timeDelta;
+      
+      // Update position based on velocity
+      const currentPos = particle.getAttribute('position');
+      particle.setAttribute('position', {
+        x: currentPos.x + velocity.x * (timeDelta/1000),
+        y: currentPos.y + velocity.y * (timeDelta/1000),
+        z: currentPos.z + velocity.z * (timeDelta/1000)
+      });
+      
+      // Scale down over time
+      const scale = 1 - (elapsed / lifespan);
+      if (scale > 0) {
+        particle.setAttribute('scale', `${scale} ${scale} ${scale}`);
+      }
+      
+      // Remove when lifespan is over
+      if (elapsed >= lifespan) {
+        scene.removeChild(particle);
+        particle.removeEventListener('ticks', tick);
+      }
+    };
+    
+    particle.addEventListener('ticks', tick);
+    
+    // Ensure cleanup
+    setTimeout(() => {
+      if (particle.parentNode) {
+        scene.removeChild(particle);
+      }
+    }, lifespan);
+  }
+}
+
 (function() {
     if (!AFRAME.components['particle-system']) {
         AFRAME.registerComponent('particle-system', {

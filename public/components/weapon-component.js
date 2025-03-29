@@ -1,3 +1,291 @@
+
+AFRAME.registerComponent('weapon-component', {
+  schema: {
+    damage: { type: 'number', default: 25 },
+    cooldown: { type: 'number', default: 0.5 },
+    automatic: { type: 'boolean', default: true },
+    range: { type: 'number', default: 100 },
+    ammoDisplay: { type: 'selector', default: '#ammo-display' }
+  },
+
+  init: function () {
+    // Weapon state
+    this.isFiring = false;
+    this.lastFired = 0;
+    this.currentAmmo = 30;
+    this.totalAmmo = Infinity; // Unlimited total ammo
+    this.reloading = false;
+    
+    // Mouse input
+    this.mouseDown = false;
+    
+    // Ammo display
+    this.ammoDisplay = document.getElementById('ammo-display');
+    this.updateAmmoDisplay();
+    
+    // Create weapon model
+    this.createWeaponModel();
+    
+    // Create weapon sound effects
+    this.createSoundEffects();
+    
+    // Bind methods
+    this.onMouseDown = this.onMouseDown.bind(this);
+    this.onMouseUp = this.onMouseUp.bind(this);
+    this.reload = this.reload.bind(this);
+    
+    // Add event listeners
+    window.addEventListener('mousedown', this.onMouseDown);
+    window.addEventListener('mouseup', this.onMouseUp);
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyR') {
+        this.reload();
+      }
+    });
+  },
+  
+  createWeaponModel: function () {
+    // Gun model
+    const gun = document.createElement('a-box');
+    gun.setAttribute('width', '0.1');
+    gun.setAttribute('height', '0.1');
+    gun.setAttribute('depth', '0.3');
+    gun.setAttribute('position', '0 0 -0.15');
+    gun.setAttribute('color', '#222');
+    this.el.appendChild(gun);
+    
+    // Muzzle flash (initially invisible)
+    const muzzleFlash = document.createElement('a-entity');
+    muzzleFlash.setAttribute('position', '0 0 -0.3');
+    muzzleFlash.setAttribute('visible', 'false');
+    
+    const muzzleLight = document.createElement('a-light');
+    muzzleLight.setAttribute('type', 'point');
+    muzzleLight.setAttribute('color', '#FFAA00');
+    muzzleLight.setAttribute('intensity', '0');
+    muzzleLight.setAttribute('distance', '1');
+    
+    muzzleFlash.appendChild(muzzleLight);
+    this.el.appendChild(muzzleFlash);
+    
+    this.muzzleFlash = muzzleFlash;
+    this.muzzleLight = muzzleLight;
+  },
+  
+  createSoundEffects: function () {
+    // Shot sound
+    const shotSound = document.createElement('a-sound');
+    shotSound.setAttribute('src', 'url(https://cdn.glitch.global/a0f42b6b-5748-4de7-8b7f-f072c068f79e/laser-gun.mp3)');
+    shotSound.setAttribute('poolSize', '3');
+    this.el.appendChild(shotSound);
+    
+    // Reload sound
+    const reloadSound = document.createElement('a-sound');
+    reloadSound.setAttribute('src', 'url(https://cdn.glitch.global/a0f42b6b-5748-4de7-8b7f-f072c068f79e/reload.mp3)');
+    this.el.appendChild(reloadSound);
+    
+    // Empty sound
+    const emptySound = document.createElement('a-sound');
+    emptySound.setAttribute('src', 'url(https://cdn.glitch.global/a0f42b6b-5748-4de7-8b7f-f072c068f79e/empty.mp3)');
+    this.el.appendChild(emptySound);
+    
+    this.shotSound = shotSound;
+    this.reloadSound = reloadSound;
+    this.emptySound = emptySound;
+  },
+
+  onMouseDown: function (e) {
+    if (e.button !== 0) return; // Only left mouse button
+    
+    // Check if game has started
+    const gameManager = document.querySelector('[game-manager]');
+    if (!gameManager || !gameManager.components['game-manager'].gameStarted) {
+      return;
+    }
+    
+    // Start firing
+    this.mouseDown = true;
+  },
+
+  onMouseUp: function (e) {
+    if (e.button !== 0) return;
+    this.mouseDown = false;
+  },
+
+  reload: function () {
+    if (this.reloading || this.currentAmmo === 30) return;
+    
+    // Play reload sound
+    this.reloadSound.components.sound.playSound();
+    
+    // Start reload animation
+    this.reloading = true;
+    setTimeout(() => {
+      this.currentAmmo = 30;
+      this.reloading = false;
+      this.updateAmmoDisplay();
+    }, 2000); // 2 second reload time
+  },
+
+  updateAmmoDisplay: function () {
+    const totalAmmoDisplay = this.totalAmmo === Infinity ? '∞' : this.totalAmmo;
+    this.ammoDisplay.textContent = `${this.currentAmmo} / ${totalAmmoDisplay}`;
+  },
+
+  fire: function () {
+    // Check cooldown
+    const now = Date.now();
+    if (now - this.lastFired < this.data.cooldown * 1000) {
+      return;
+    }
+    
+    // Check ammo
+    if (this.currentAmmo <= 0) {
+      this.emptySound.components.sound.playSound();
+      this.lastFired = now;
+      return;
+    }
+    
+    // Decrement ammo
+    this.currentAmmo--;
+    this.updateAmmoDisplay();
+    
+    // Play sound
+    this.shotSound.components.sound.playSound();
+    
+    // Muzzle flash effect
+    this.muzzleLight.setAttribute('intensity', '2');
+    setTimeout(() => {
+      this.muzzleLight.setAttribute('intensity', '0');
+    }, 50);
+    
+    // Raycasting for hit detection
+    const camera = document.getElementById('camera');
+    const direction = new THREE.Vector3(0, 0, -1);
+    direction.unproject(camera.object3D.camera);
+    
+    const raycaster = new THREE.Raycaster();
+    const rayOrigin = new THREE.Vector3();
+    camera.object3D.getWorldPosition(rayOrigin);
+    
+    raycaster.set(rayOrigin, direction.normalize());
+    
+    // Get all enemies
+    const enemies = Array.from(document.querySelectorAll('[enemy-component]'));
+    const intersections = [];
+    
+    enemies.forEach(enemy => {
+      if (!enemy.object3D) return;
+      
+      // Check for ray intersection
+      const meshes = [];
+      enemy.object3D.traverse(node => {
+        if (node.isMesh) meshes.push(node);
+      });
+      
+      const enemyIntersections = raycaster.intersectObjects(meshes);
+      if (enemyIntersections.length > 0) {
+        intersections.push({
+          distance: enemyIntersections[0].distance,
+          entity: enemy
+        });
+      }
+    });
+    
+    // Sort by distance and apply damage to closest hit
+    if (intersections.length > 0) {
+      intersections.sort((a, b) => a.distance - b.distance);
+      const closestEnemy = intersections[0].entity;
+      
+      // Apply damage
+      if (closestEnemy.takeDamage) {
+        closestEnemy.takeDamage(this.data.damage, this.el);
+      }
+      
+      // Visual feedback - bullet trail
+      this.createBulletTrail(rayOrigin, closestEnemy.object3D.position);
+    } else {
+      // Create bullet trail that goes into the distance
+      const farPoint = new THREE.Vector3();
+      farPoint.copy(direction).multiplyScalar(100).add(rayOrigin);
+      this.createBulletTrail(rayOrigin, farPoint);
+    }
+    
+    // Update last fired time
+    this.lastFired = now;
+  },
+  
+  createBulletTrail: function (startPoint, endPoint) {
+    // Create bullet trail entity
+    const bulletTrail = document.createElement('a-entity');
+    
+    // Create line geometry
+    const geometry = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(
+        endPoint.x - startPoint.x,
+        endPoint.y - startPoint.y,
+        endPoint.z - startPoint.z
+      )
+    ]);
+    
+    // Create material
+    const material = new THREE.LineBasicMaterial({
+      color: 0x00ffff,
+      transparent: true,
+      opacity: 0.7
+    });
+    
+    // Create line
+    const line = new THREE.Line(geometry, material);
+    
+    // Add to scene
+    bulletTrail.setObject3D('mesh', line);
+    bulletTrail.setAttribute('position', startPoint);
+    
+    document.querySelector('a-scene').appendChild(bulletTrail);
+    
+    // Animate and remove
+    let duration = 200; // ms
+    let startTime = Date.now();
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      if (elapsed >= duration) {
+        document.querySelector('a-scene').removeChild(bulletTrail);
+        return;
+      }
+      
+      // Fade out
+      const opacity = 0.7 * (1 - elapsed / duration);
+      material.opacity = opacity;
+      
+      requestAnimationFrame(animate);
+    };
+    
+    animate();
+  },
+
+  tick: function (time, timeDelta) {
+    // Skip if game not started
+    const gameManager = document.querySelector('[game-manager]');
+    if (!gameManager || !gameManager.components['game-manager'].gameStarted) {
+      return;
+    }
+    
+    // Handle automatic firing
+    if (this.mouseDown && this.data.automatic && !this.reloading) {
+      this.fire();
+    }
+  },
+
+  remove: function () {
+    // Remove event listeners
+    window.removeEventListener('mousedown', this.onMouseDown);
+    window.removeEventListener('mouseup', this.onMouseUp);
+  }
+});
+
 AFRAME.registerComponent('weapon-component', {
     schema: {
         damage: { type: 'number', default: 25 }, // 25 damage = 4 hits to kill a 100 HP enemy

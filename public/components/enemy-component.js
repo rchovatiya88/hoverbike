@@ -1,3 +1,236 @@
+
+AFRAME.registerComponent('enemy-component', {
+  schema: {
+    health: { type: 'number', default: 50 },
+    speed: { type: 'number', default: 3 },
+    damage: { type: 'number', default: 10 },
+    detectionRange: { type: 'number', default: 20 }
+  },
+
+  init: function () {
+    // Enemy state
+    this.currentHealth = this.data.health;
+    this.isDead = false;
+    
+    // Set up YUKA entity and behavior
+    this.setupYuka();
+    
+    // Bind event handlers
+    this.onDamage = this.onDamage.bind(this);
+    
+    // Add event listeners
+    this.el.addEventListener('damage', this.onDamage);
+    
+    // Make enemy damageable with the hitbox component
+    this.el.setAttribute('hitbox-component', '');
+  },
+
+  setupYuka: function () {
+    // Create the YUKA entity
+    this.vehicle = new YUKA.Vehicle();
+    
+    // Get initial position
+    const position = this.el.getAttribute('position');
+    this.vehicle.position.set(position.x, position.y, position.z);
+    
+    // Setup steering behaviors
+    this.seekBehavior = new YUKA.SeekBehavior();
+    this.vehicle.steering.add(this.seekBehavior);
+    
+    // Set max speed and acceleration
+    this.vehicle.maxSpeed = this.data.speed;
+    this.vehicle.maxForce = 10;
+    
+    // Create entity manager if it doesn't exist yet
+    if (!this.el.sceneEl.entityManager) {
+      this.el.sceneEl.entityManager = new YUKA.EntityManager();
+    }
+    
+    // Add vehicle to entity manager
+    this.el.sceneEl.entityManager.add(this.vehicle);
+    
+    // Connect YUKA entity to A-Frame entity
+    this.vehicle.aFrameEntity = this.el;
+    
+    // Set up time
+    this.previousTime = 0;
+  },
+
+  onDamage: function (event) {
+    const damage = event.detail.amount;
+    
+    // Reduce health
+    this.currentHealth -= damage;
+    
+    // Visual feedback - color flash
+    const originalColor = this.el.getAttribute('material').color;
+    this.el.setAttribute('material', 'color', '#FFFFFF');
+    setTimeout(() => {
+      if (!this.isDead) {
+        this.el.setAttribute('material', 'color', originalColor);
+      }
+    }, 100);
+    
+    // Check for death
+    if (this.currentHealth <= 0 && !this.isDead) {
+      this.onDeath();
+    }
+  },
+
+  onDeath: function () {
+    this.isDead = true;
+    
+    // Change color
+    this.el.setAttribute('material', 'color', '#333333');
+    
+    // Stop YUKA behaviors
+    this.vehicle.steering.clear();
+    this.el.sceneEl.entityManager.remove(this.vehicle);
+    
+    // Create explosion effect
+    const position = this.el.object3D.position;
+    createParticles(
+      this.el.sceneEl,
+      position,
+      '#FF4400',
+      20,
+      1000
+    );
+    
+    // Emit event for game manager
+    this.el.sceneEl.emit('enemy-destroyed', { enemy: this.el });
+    
+    // Remove from scene
+    setTimeout(() => {
+      if (this.el.parentNode) {
+        this.el.parentNode.removeChild(this.el);
+      }
+    }, 1000);
+  },
+
+  attackPlayer: function (player) {
+    // Apply damage to player
+    if (player.components['player-component']) {
+      player.emit('damage', { amount: this.data.damage, source: this.el });
+    }
+    
+    // Cooldown before next attack
+    this.lastAttackTime = Date.now();
+  },
+
+  tick: function (time, timeDelta) {
+    // Skip if dead
+    if (this.isDead) return;
+    
+    // Get the player
+    const player = document.getElementById('player');
+    if (!player) return;
+    
+    // Calculate delta time for YUKA
+    const delta = (this.previousTime === 0) ? 0 : (time - this.previousTime) / 1000;
+    this.previousTime = time;
+    
+    // Check if player is within detection range
+    const playerPos = player.object3D.position;
+    const enemyPos = this.el.object3D.position;
+    const distanceToPlayer = Math.sqrt(
+      Math.pow(playerPos.x - enemyPos.x, 2) +
+      Math.pow(playerPos.y - enemyPos.y, 2) +
+      Math.pow(playerPos.z - enemyPos.z, 2)
+    );
+    
+    if (distanceToPlayer <= this.data.detectionRange) {
+      // Set the seek target to player position
+      this.seekBehavior.target.copy(player.object3D.position);
+      
+      // Update YUKA entity manager
+      if (this.el.sceneEl.entityManager && delta > 0) {
+        this.el.sceneEl.entityManager.update(delta);
+      }
+      
+      // Update A-Frame entity position from YUKA
+      this.el.setAttribute('position', {
+        x: this.vehicle.position.x,
+        y: this.vehicle.position.y,
+        z: this.vehicle.position.z
+      });
+      
+      // Attack if close enough
+      if (distanceToPlayer < 2 && (!this.lastAttackTime || (Date.now() - this.lastAttackTime) > 1000)) {
+        this.attackPlayer(player);
+      }
+    }
+  },
+
+  remove: function () {
+    // Clean up YUKA entities
+    if (this.el.sceneEl.entityManager && this.vehicle) {
+      this.el.sceneEl.entityManager.remove(this.vehicle);
+    }
+  }
+});
+
+// Helper function to create particle effects
+function createParticles(scene, position, color, count, lifespan) {
+  for (let i = 0; i < count; i++) {
+    const particle = document.createElement('a-entity');
+    
+    // Random direction
+    const angle1 = Math.random() * Math.PI * 2;
+    const angle2 = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 2 + 1;
+    
+    const velocity = {
+      x: Math.cos(angle1) * Math.cos(angle2) * speed,
+      y: Math.sin(angle2) * speed,
+      z: Math.sin(angle1) * Math.cos(angle2) * speed
+    };
+    
+    // Set attributes
+    particle.setAttribute('position', `${position.x} ${position.y} ${position.z}`);
+    particle.setAttribute('geometry', 'primitive: sphere; radius: 0.1');
+    particle.setAttribute('material', `color: ${color}; shader: flat`);
+    
+    // Add to scene
+    scene.appendChild(particle);
+    
+    // Animate and remove
+    let elapsed = 0;
+    const tick = function(time, timeDelta) {
+      elapsed += timeDelta;
+      
+      // Update position based on velocity
+      const currentPos = particle.getAttribute('position');
+      particle.setAttribute('position', {
+        x: currentPos.x + velocity.x * (timeDelta/1000),
+        y: currentPos.y + velocity.y * (timeDelta/1000),
+        z: currentPos.z + velocity.z * (timeDelta/1000)
+      });
+      
+      // Scale down over time
+      const scale = 1 - (elapsed / lifespan);
+      if (scale > 0) {
+        particle.setAttribute('scale', `${scale} ${scale} ${scale}`);
+      }
+      
+      // Remove when lifespan is over
+      if (elapsed >= lifespan) {
+        scene.removeChild(particle);
+        particle.removeEventListener('tick', tick);
+      }
+    };
+    
+    particle.addEventListener('tick', tick);
+    
+    // Ensure cleanup
+    setTimeout(() => {
+      if (particle.parentNode) {
+        scene.removeChild(particle);
+      }
+    }, lifespan);
+  }
+}
+
 AFRAME.registerComponent('enemy-component', {
     schema: {
         health: { type: 'number', default: 100 },

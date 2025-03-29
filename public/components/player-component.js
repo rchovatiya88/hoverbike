@@ -1,3 +1,211 @@
+
+AFRAME.registerComponent('player-component', {
+  schema: {
+    speed: { type: 'number', default: 5 },
+    health: { type: 'number', default: 100 }
+  },
+
+  init: function () {
+    // Movement controls
+    this.velocity = new THREE.Vector3(0, 0, 0);
+    this.acceleration = 80.0;
+    this.deceleration = 5.0;
+    this.keys = {
+      KeyW: false,
+      KeyS: false,
+      KeyA: false,
+      KeyD: false,
+      KeyQ: false, // Up
+      KeyE: false, // Down
+      ShiftLeft: false // Boost
+    };
+
+    // Health management
+    this.currentHealth = this.data.health;
+    this.healthBar = document.getElementById('health-bar');
+    this.damageOverlay = document.getElementById('damage-overlay');
+    this.updateHealthBar();
+
+    // Movement velocity
+    this.moveVector = new THREE.Vector3(0, 0, 0);
+    
+    // Set up event listeners
+    this.attachEventListeners();
+    
+    // Create jetbike sounds
+    this.createSounds();
+  },
+
+  attachEventListeners: function () {
+    // Keyboard events
+    window.addEventListener('keydown', this.onKeyDown.bind(this));
+    window.addEventListener('keyup', this.onKeyUp.bind(this));
+    
+    // Damage event
+    this.el.addEventListener('damage', this.onDamage.bind(this));
+  },
+
+  createSounds: function () {
+    // Jetbike engine sound
+    const engineSound = document.createElement('a-sound');
+    engineSound.setAttribute('src', 'url(https://cdn.glitch.global/a0f42b6b-5748-4de7-8b7f-f072c068f79e/engine-loop.mp3)');
+    engineSound.setAttribute('loop', 'true');
+    engineSound.setAttribute('volume', '0.5');
+    this.el.appendChild(engineSound);
+    
+    // Damage sound
+    const damageSound = document.createElement('a-sound');
+    damageSound.setAttribute('src', 'url(https://cdn.glitch.global/a0f42b6b-5748-4de7-8b7f-f072c068f79e/damage.mp3)');
+    damageSound.setAttribute('volume', '1.0');
+    this.el.appendChild(damageSound);
+    
+    this.engineSound = engineSound;
+    this.damageSound = damageSound;
+  },
+
+  onKeyDown: function (event) {
+    if (this.keys.hasOwnProperty(event.code)) {
+      this.keys[event.code] = true;
+    }
+  },
+
+  onKeyUp: function (event) {
+    if (this.keys.hasOwnProperty(event.code)) {
+      this.keys[event.code] = false;
+    }
+  },
+
+  onDamage: function (event) {
+    const damageAmount = event.detail.amount;
+    this.currentHealth = Math.max(0, this.currentHealth - damageAmount);
+    
+    // Visual feedback
+    this.damageOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+    setTimeout(() => {
+      this.damageOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0)';
+    }, 100);
+    
+    // Play damage sound
+    this.damageSound.components.sound.playSound();
+    
+    // Update health bar
+    this.updateHealthBar();
+    
+    // Check for death
+    if (this.currentHealth <= 0) {
+      this.onDeath();
+    }
+  },
+
+  updateHealthBar: function () {
+    const healthPercent = (this.currentHealth / this.data.health) * 100;
+    this.healthBar.style.width = healthPercent + '%';
+    
+    // Change color based on health
+    if (healthPercent > 60) {
+      this.healthBar.style.backgroundColor = '#0f0'; // Green
+    } else if (healthPercent > 30) {
+      this.healthBar.style.backgroundColor = '#ff0'; // Yellow
+    } else {
+      this.healthBar.style.backgroundColor = '#f00'; // Red
+    }
+  },
+
+  onDeath: function () {
+    // Show game over message
+    const gameMessage = document.getElementById('game-message');
+    gameMessage.innerHTML = 'Game Over<br><button id="restart-button">Restart</button>';
+    gameMessage.style.display = 'block';
+    
+    document.getElementById('restart-button').addEventListener('click', () => {
+      window.location.reload();
+    });
+  },
+
+  tick: function (time, timeDelta) {
+    // Skip if game not started
+    const gameManager = document.querySelector('[game-manager]');
+    if (!gameManager || !gameManager.components['game-manager'].gameStarted) {
+      return;
+    }
+    
+    // Delta in seconds
+    const delta = timeDelta / 1000;
+    
+    // Calculate movement direction based on camera orientation
+    const rotation = this.el.querySelector('#camera').getAttribute('rotation');
+    const rotationRad = {
+      y: degToRad(rotation.y)
+    };
+    
+    // Reset movement vector
+    this.moveVector.set(0, 0, 0);
+    
+    // Forward/backward (Z-axis)
+    if (this.keys.KeyW) {
+      this.moveVector.z = -1;
+    } else if (this.keys.KeyS) {
+      this.moveVector.z = 1;
+    }
+    
+    // Left/right (X-axis)
+    if (this.keys.KeyA) {
+      this.moveVector.x = -1;
+    } else if (this.keys.KeyD) {
+      this.moveVector.x = 1;
+    }
+    
+    // Up/down (Y-axis) - Direct control
+    if (this.keys.KeyQ) {
+      this.moveVector.y = 1; // Up
+    } else if (this.keys.KeyE) {
+      this.moveVector.y = -1; // Down
+    }
+    
+    // Normalize if moving in multiple directions
+    if (this.moveVector.length() > 0) {
+      this.moveVector.normalize();
+    }
+    
+    // Apply camera rotation to X/Z movement (but not Y)
+    const rotatedMoveX = this.moveVector.x * Math.cos(rotationRad.y) + this.moveVector.z * Math.sin(rotationRad.y);
+    const rotatedMoveZ = this.moveVector.z * Math.cos(rotationRad.y) - this.moveVector.x * Math.sin(rotationRad.y);
+    this.moveVector.x = rotatedMoveX;
+    this.moveVector.z = rotatedMoveZ;
+    
+    // Apply speed and boost
+    const speed = this.data.speed * (this.keys.ShiftLeft ? 1.5 : 1.0);
+    this.moveVector.multiplyScalar(speed);
+    
+    // Update position
+    const currentPosition = this.el.getAttribute('position');
+    this.el.setAttribute('position', {
+      x: currentPosition.x + this.moveVector.x * delta,
+      y: currentPosition.y + this.moveVector.y * delta,
+      z: currentPosition.z + this.moveVector.z * delta
+    });
+    
+    // Keep player above ground
+    if (currentPosition.y < 1) {
+      this.el.setAttribute('position', {
+        x: currentPosition.x,
+        y: 1,
+        z: currentPosition.z
+      });
+    }
+    
+    // Adjust engine sound volume based on movement
+    const isMoving = this.moveVector.length() > 0;
+    const volume = isMoving ? (this.keys.ShiftLeft ? 0.8 : 0.5) : 0.2;
+    this.engineSound.setAttribute('volume', volume);
+  }
+});
+
+// Helper function to convert degrees to radians
+function degToRad(degrees) {
+  return degrees * (Math.PI / 180);
+}
+
 AFRAME.registerComponent('player-component', {
     schema: {
         speed: { type: 'number', default: 5 },

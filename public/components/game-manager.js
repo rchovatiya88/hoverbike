@@ -1,3 +1,118 @@
+
+AFRAME.registerComponent('game-manager', {
+  schema: {
+    enemyCount: { type: 'number', default: 5 },
+    level: { type: 'number', default: 1 },
+    spawnRadius: { type: 'number', default: 15 }
+  },
+
+  init: function () {
+    this.enemies = [];
+    this.score = 0;
+    this.gameStarted = false;
+    this.levelComplete = false;
+
+    // UI Elements
+    this.levelValueEl = document.getElementById('level-value');
+    this.scoreValueEl = document.getElementById('score-value');
+    this.enemiesValueEl = document.getElementById('enemies-value');
+
+    // Bind methods
+    this.startGame = this.startGame.bind(this);
+    this.spawnEnemies = this.spawnEnemies.bind(this);
+    this.onEnemyDestroyed = this.onEnemyDestroyed.bind(this);
+    this.updateUI = this.updateUI.bind(this);
+    this.nextLevel = this.nextLevel.bind(this);
+
+    // Listen for enemy destroyed events
+    this.el.addEventListener('enemy-destroyed', this.onEnemyDestroyed);
+  },
+
+  startGame: function () {
+    console.log('Game started');
+    this.gameStarted = true;
+    this.spawnEnemies();
+    this.updateUI();
+  },
+
+  spawnEnemies: function () {
+    const enemyCount = this.data.enemyCount + (this.data.level - 1) * 2;
+    const spawnRadius = this.data.spawnRadius;
+
+    for (let i = 0; i < enemyCount; i++) {
+      // Create enemy entity
+      const enemy = document.createElement('a-entity');
+      
+      // Random position around the player, at varying heights
+      const angle = Math.random() * Math.PI * 2;
+      const radius = Math.random() * spawnRadius + spawnRadius/2;
+      const height = Math.random() * 5 + 3; // Random height between 3 and 8 units
+      
+      const x = Math.cos(angle) * radius;
+      const z = Math.sin(angle) * radius;
+      
+      // Set enemy attributes
+      enemy.setAttribute('position', `${x} ${height} ${z}`);
+      enemy.setAttribute('enemy-component', {
+        health: 50 + (this.data.level - 1) * 25,
+        speed: 3 + (this.data.level - 1) * 0.5,
+        damage: 10 + (this.data.level - 1) * 5
+      });
+      enemy.setAttribute('geometry', 'primitive: box; width: 1; height: 1; depth: 1');
+      enemy.setAttribute('material', 'color: red');
+      enemy.setAttribute('hitbox-component', '');
+      
+      // Add enemy to scene
+      this.el.sceneEl.appendChild(enemy);
+      this.enemies.push(enemy);
+    }
+    
+    // Update UI
+    this.enemiesValueEl.textContent = this.enemies.length;
+  },
+
+  onEnemyDestroyed: function (event) {
+    // Remove from enemies array
+    const enemyEl = event.detail.enemy;
+    const index = this.enemies.indexOf(enemyEl);
+    if (index > -1) {
+      this.enemies.splice(index, 1);
+    }
+    
+    // Update score
+    this.score += 100 * this.data.level;
+    this.updateUI();
+    
+    // Check if level complete
+    if (this.enemies.length === 0 && this.gameStarted && !this.levelComplete) {
+      this.levelComplete = true;
+      setTimeout(this.nextLevel, 3000);
+    }
+  },
+
+  nextLevel: function () {
+    this.data.level++;
+    this.levelComplete = false;
+    
+    // Display level message
+    const gameMessage = document.getElementById('game-message');
+    gameMessage.innerHTML = `Level ${this.data.level} Starting!`;
+    gameMessage.style.display = 'block';
+    
+    setTimeout(() => {
+      gameMessage.style.display = 'none';
+      this.spawnEnemies();
+      this.updateUI();
+    }, 2000);
+  },
+
+  updateUI: function () {
+    this.levelValueEl.textContent = this.data.level;
+    this.scoreValueEl.textContent = this.score;
+    this.enemiesValueEl.textContent = this.enemies.length;
+  }
+});
+
 AFRAME.registerComponent('game-manager', {
     schema: {
         enemyCount: { type: 'number', default: 10 },

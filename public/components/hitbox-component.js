@@ -1,3 +1,52 @@
+
+AFRAME.registerComponent('hitbox-component', {
+  init: function () {
+    // Initialize hitbox
+    this.el.hitbox = {
+      width: 1,
+      height: 1,
+      depth: 1
+    };
+    
+    // Get dimensions from geometry if available
+    if (this.el.getAttribute('geometry')) {
+      const geometry = this.el.getAttribute('geometry');
+      this.el.hitbox.width = geometry.width || 1;
+      this.el.hitbox.height = geometry.height || 1;
+      this.el.hitbox.depth = geometry.depth || 1;
+    }
+
+    // Allow this entity to take damage
+    this.el.takeDamage = (amount, source) => {
+      // Emit event so other components can handle damage
+      this.el.emit('damage', { amount: amount, source: source });
+    };
+
+    // Method to check for collision with another entity
+    this.el.collidesWith = (otherEntity) => {
+      if (!otherEntity || !otherEntity.object3D) return false;
+      
+      // Get world positions
+      const position = new THREE.Vector3();
+      const otherPosition = new THREE.Vector3();
+      
+      this.el.object3D.getWorldPosition(position);
+      otherEntity.object3D.getWorldPosition(otherPosition);
+      
+      // Get hitbox dimensions (or defaults)
+      const hitbox = this.el.hitbox || { width: 1, height: 1, depth: 1 };
+      const otherHitbox = otherEntity.hitbox || { width: 1, height: 1, depth: 1 };
+      
+      // Check for overlap in all three dimensions
+      return (
+        Math.abs(position.x - otherPosition.x) < (hitbox.width + otherHitbox.width) / 2 &&
+        Math.abs(position.y - otherPosition.y) < (hitbox.height + otherHitbox.height) / 2 &&
+        Math.abs(position.z - otherPosition.z) < (hitbox.depth + otherHitbox.depth) / 2
+      );
+    };
+  }
+});
+
 /**
  * Hitbox Component for A-Frame
  * 
