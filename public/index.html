@@ -217,10 +217,21 @@
                 <!-- Simple enemy model (box for now) -->
                 <a-mixin
 
-            <div id="debug-overlay" style="position: absolute; top: 60px; left: 20px; background-color: rgba(0,0,0,0.5); color: white; padding: 10px; border-radius: 5px; font-family: monospace; z-index: 100;">
+            <div id="debug-overlay" style="position: absolute; top: 60px; left: 20px; background-color: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 5px; font-family: monospace; z-index: 100; border: 2px solid #4287f5;">
+                <div><strong>Debug Information:</strong></div>
                 <div>Player Position: <span id="player-pos">N/A</span></div>
                 <div>Player Rotation: <span id="player-rot">N/A</span></div>
                 <div>Camera Rotation: <span id="camera-rot">N/A</span></div>
+                <div style="margin-top: 10px; border-top: 1px solid white; padding-top: 5px;">
+                    <div><strong>Wall Orientation Guide:</strong></div>
+                    <div>North Wall: Blue (Z=-25)</div>
+                    <div>South Wall: Red (Z=25)</div>
+                    <div>East Wall: Green (X=50)</div>
+                    <div>West Wall: Yellow (X=-50)</div>
+                </div>
+                <div style="margin-top: 10px;">
+                    <strong>Press N key to test North Wall orientation</strong>
+                </div>
             </div>
 
                     id="enemy-mixin"
@@ -338,7 +349,7 @@
                 gltf-model="#jetbike-model"
                 player-component="speed: 5; health: 100"
                 weapon-component="damage: 25; cooldown: 0.5; automatic: true"
-                position="0 1.5 10"
+                position="0 1.5 0"
                 rotation="0 0 0"
             >
                 <!-- Weapons attached to the bike -->
