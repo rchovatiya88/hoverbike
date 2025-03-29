@@ -23,7 +23,6 @@
         <script src="components/simple-navmesh-constraint.js"></script>
         <script src="components/model-camera-fix.js"></script>
         <script src="components/third-person-camera.js"></script>
-        <script src="components/position-tracker.js"></script>
 
         <style>
             body {
@@ -158,28 +157,8 @@
         <div id="damage-overlay"></div>
         <div id="game-message">
             Welcome to Hover Jetbike Shooter!<br />
-            WASD to move, Q/E to ascend/descend, Mouse to aim, Click to shoot<br />
-            Press D to toggle debug mode, Arrow keys to adjust camera in debug mode<br /><br />
+            WASD to move, Q/E to ascend/descend, Mouse to aim, Click to shoot<br /><br />
             <button id="start-button">Start Game</button>
-        </div>
-        
-        <div id="camera-debug-controls" style="display: none; position: absolute; right: 20px; top: 20px; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; color: white; z-index: 100;">
-            <div>Camera Adjustments</div>
-            <div>
-                <label>Height: <span id="camera-height-value">4.5</span></label>
-                <input type="range" id="camera-height" min="0" max="10" step="0.5" value="4.5">
-            </div>
-            <div>
-                <label>Distance: <span id="camera-distance-value">8</span></label>
-                <input type="range" id="camera-distance" min="1" max="15" step="0.5" value="8">
-            </div>
-            <div>
-                <label>Look Height: <span id="camera-look-height-value">1.5</span></label>
-                <input type="range" id="camera-look-height" min="0" max="5" step="0.5" value="1.5">
-            </div>
-            <div>
-                <button id="toggle-debug-viz">Toggle Debug Visualization</button>
-            </div>
         </div>
 
         <a-scene
@@ -187,7 +166,6 @@
             vr-mode-ui="enabled: false"
             renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true;"
             simple-navmesh-constraint="navmesh:.navmesh;fall:0.5;height:0;exclude:.navmesh-hole;"
-            position-tracker="target: #player; showDebug: true"
         >
             <a-assets>
                 <!-- Sound assets removed to fix encoding errors -->
@@ -212,46 +190,6 @@
                 height="50"
                 color="#7BC8A4"
             ></a-plane>
-            
-            <!-- Blue tracking walls -->
-            <a-box
-                id="left-wall"
-                position="-25 2 0"
-                depth="50"
-                height="4"
-                width="1"
-                color="#0077FF"
-                opacity="0.7"
-                class="tracking-wall"
-            ></a-box>
-            
-            <a-box
-                id="right-wall"
-                position="25 2 0"
-                depth="50"
-                height="4"
-                width="1"
-                color="#0077FF"
-                opacity="0.7"
-                class="tracking-wall"
-            ></a-box>
-            
-            <!-- Position markers on walls -->
-            <a-entity id="wall-markers">
-                <!-- Left wall markers -->
-                <a-box position="-25 2 -20" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
-                <a-box position="-25 2 -10" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
-                <a-box position="-25 2 0" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
-                <a-box position="-25 2 10" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
-                <a-box position="-25 2 20" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
-                
-                <!-- Right wall markers -->
-                <a-box position="25 2 -20" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
-                <a-box position="25 2 -10" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
-                <a-box position="25 2 0" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
-                <a-box position="25 2 10" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
-                <a-box position="25 2 20" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
-            </a-entity>
 
             <!-- Player with third-person camera -->
             <a-entity
@@ -259,7 +197,7 @@
                 gltf-model="#jetbike-model"
                 player-component="speed: 5; health: 100"
                 weapon-component="damage: 25; cooldown: 0.5; automatic: true"
-                position="0 2 0"
+                position="0 1.5 0"
                 rotation="0 180 0"
             >
                 <!-- Weapons attached to the bike -->
@@ -280,8 +218,8 @@
             <!-- Third-person camera -->
             <a-entity
                 id="camera-rig"
-                third-person-camera="target: #player; distance: 6; height: 3; lookAtHeight: 1.75; damping: 0.4; enableCollision: true"
-                position="0 5 -6"
+                third-person-camera="target: #player; distance: 8; height: 4.5; lookAtHeight: 1.5; damping: 0.3"
+                position="0 5 -8"
                 rotation="0 0 0"
             >
                 <a-camera
@@ -289,18 +227,10 @@
                     look-controls="reverseMouseDrag: false; touchEnabled: true; pointerLockEnabled: true; magicWindowTrackingEnabled: false"
                     wasd-controls="enabled: false"
                     position="0 0 0"
-                    rotation="-10 180 0"
-                    near="0.1"
-                    far="1000"
+                    rotation="-15 180 0"
                 >
                 </a-camera>
             </a-entity>
-
-            <!-- Debug visualization entities for camera (visible only in debug mode) -->
-            <a-entity id="debugCamera" geometry="primitive: box; width: 0.5; height: 0.5; depth: 0.5" material="color: blue; opacity: 0.5" visible="false"></a-entity>
-            <a-entity id="debugTarget" geometry="primitive: sphere; radius: 0.3" material="color: red; opacity: 0.5" visible="false"></a-entity>
-            <a-entity id="debugLine" line="color: yellow; opacity: 0.5" visible="false"></a-entity>
-            <a-entity id="debugText" text="value: Camera Debug; align: center; color: white" position="0 0 0" visible="false"></a-entity>
             <!-- Sky -->
             <a-sky color="#88CCEE"></a-sky>
             <!-- Lights -->
@@ -350,12 +280,8 @@
             document.addEventListener("pointerlockchange", function () {
                 if (document.pointerLockElement === document.body) {
                     console.log("Pointer locked");
-                    document.getElementById("camera-debug-controls").style.display = "none";
                 } else {
                     console.log("Pointer unlocked");
-                    // Show camera debug controls when game is paused
-                    document.getElementById("camera-debug-controls").style.display = "block";
-                    
                     const gameManager =
                         document.querySelector("[game-manager]");
                     const gameManagerComponent =
@@ -385,70 +311,6 @@
                                 },
                             );
                     }
-                }
-            });
-            
-            // Camera debug controls
-            document.addEventListener('DOMContentLoaded', function() {
-                const cameraRig = document.getElementById('camera-rig');
-                const cameraComponent = cameraRig ? cameraRig.components['third-person-camera'] : null;
-                
-                if (cameraComponent) {
-                    // Set initial values
-                    document.getElementById('camera-height-value').textContent = cameraComponent.data.height;
-                    document.getElementById('camera-distance-value').textContent = cameraComponent.data.distance;
-                    document.getElementById('camera-look-height-value').textContent = cameraComponent.data.lookAtHeight;
-                    
-                    // Height slider
-                    document.getElementById('camera-height').addEventListener('input', function(e) {
-                        const value = parseFloat(e.target.value);
-                        cameraRig.setAttribute('third-person-camera', 'height', value);
-                        document.getElementById('camera-height-value').textContent = value;
-                        console.log('Camera height set to:', value);
-                    });
-                    
-                    // Distance slider
-                    document.getElementById('camera-distance').addEventListener('input', function(e) {
-                        const value = parseFloat(e.target.value);
-                        cameraRig.setAttribute('third-person-camera', 'distance', value);
-                        document.getElementById('camera-distance-value').textContent = value;
-                        console.log('Camera distance set to:', value);
-                    });
-                    
-                    // Look height slider
-                    document.getElementById('camera-look-height').addEventListener('input', function(e) {
-                        const value = parseFloat(e.target.value);
-                        cameraRig.setAttribute('third-person-camera', 'lookAtHeight', value);
-                        document.getElementById('camera-look-height-value').textContent = value;
-                        console.log('Look height set to:', value);
-                    });
-                    
-                    // Toggle debug visualization
-                    document.getElementById('toggle-debug-viz').addEventListener('click', function() {
-                        if (cameraComponent.debugMode !== undefined) {
-                            cameraComponent.debugMode = !cameraComponent.debugMode;
-                            
-                            // Update visibility of debug elements
-                            if (cameraComponent.debugCamera) 
-                                cameraComponent.debugCamera.setAttribute('visible', cameraComponent.debugMode);
-                            if (cameraComponent.debugTarget) 
-                                cameraComponent.debugTarget.setAttribute('visible', cameraComponent.debugMode);
-                            if (cameraComponent.debugLine) 
-                                cameraComponent.debugLine.setAttribute('visible', cameraComponent.debugMode);
-                            if (cameraComponent.debugText) 
-                                cameraComponent.debugText.setAttribute('visible', cameraComponent.debugMode);
-                                
-                            console.log('Debug visualization:', cameraComponent.debugMode ? 'ON' : 'OFF');
-                        }
-                    });
-                    
-                    // Keyboard shortcut for toggling debug controls
-                    window.addEventListener('keydown', function(e) {
-                        if (e.key === 'o' || e.key === 'O') {
-                            const controls = document.getElementById('camera-debug-controls');
-                            controls.style.display = controls.style.display === 'none' ? 'block' : 'none';
-                        }
-                    });
                 }
             });
         </script>
