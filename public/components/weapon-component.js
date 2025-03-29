@@ -128,15 +128,13 @@ if (!AFRAME.components['weapon-component']) {
           return;
         }
 
-        // Create muzzle flash
+        // Create muzzle flash with a material that doesn't use emissive properties
         const flashGeometry = new THREE.PlaneGeometry(0.2, 0.2);
         const flashMaterial = new THREE.MeshBasicMaterial({
           color: 0xffff00,
           transparent: true,
           opacity: 1,
-          side: THREE.DoubleSide,
-          emissive: 0xffff00,
-          emissiveIntensity: 2
+          side: THREE.DoubleSide
         });
         
         this.muzzleFlash = new THREE.Mesh(flashGeometry, flashMaterial);
