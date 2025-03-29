@@ -157,8 +157,28 @@
         <div id="damage-overlay"></div>
         <div id="game-message">
             Welcome to Hover Jetbike Shooter!<br />
-            WASD to move, Q/E to ascend/descend, Mouse to aim, Click to shoot<br /><br />
+            WASD to move, Q/E to ascend/descend, Mouse to aim, Click to shoot<br />
+            Press D to toggle debug mode, Arrow keys to adjust camera in debug mode<br /><br />
             <button id="start-button">Start Game</button>
+        </div>
+        
+        <div id="camera-debug-controls" style="display: none; position: absolute; right: 20px; top: 20px; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; color: white; z-index: 100;">
+            <div>Camera Adjustments</div>
+            <div>
+                <label>Height: <span id="camera-height-value">4.5</span></label>
+                <input type="range" id="camera-height" min="0" max="10" step="0.5" value="4.5">
+            </div>
+            <div>
+                <label>Distance: <span id="camera-distance-value">8</span></label>
+                <input type="range" id="camera-distance" min="1" max="15" step="0.5" value="8">
+            </div>
+            <div>
+                <label>Look Height: <span id="camera-look-height-value">1.5</span></label>
+                <input type="range" id="camera-look-height" min="0" max="5" step="0.5" value="1.5">
+            </div>
+            <div>
+                <button id="toggle-debug-viz">Toggle Debug Visualization</button>
+            </div>
         </div>
 
         <a-scene
@@ -280,8 +300,12 @@
             document.addEventListener("pointerlockchange", function () {
                 if (document.pointerLockElement === document.body) {
                     console.log("Pointer locked");
+                    document.getElementById("camera-debug-controls").style.display = "none";
                 } else {
                     console.log("Pointer unlocked");
+                    // Show camera debug controls when game is paused
+                    document.getElementById("camera-debug-controls").style.display = "block";
+                    
                     const gameManager =
                         document.querySelector("[game-manager]");
                     const gameManagerComponent =
@@ -311,6 +335,70 @@
                                 },
                             );
                     }
+                }
+            });
+            
+            // Camera debug controls
+            document.addEventListener('DOMContentLoaded', function() {
+                const cameraRig = document.getElementById('camera-rig');
+                const cameraComponent = cameraRig ? cameraRig.components['third-person-camera'] : null;
+                
+                if (cameraComponent) {
+                    // Set initial values
+                    document.getElementById('camera-height-value').textContent = cameraComponent.data.height;
+                    document.getElementById('camera-distance-value').textContent = cameraComponent.data.distance;
+                    document.getElementById('camera-look-height-value').textContent = cameraComponent.data.lookAtHeight;
+                    
+                    // Height slider
+                    document.getElementById('camera-height').addEventListener('input', function(e) {
+                        const value = parseFloat(e.target.value);
+                        cameraRig.setAttribute('third-person-camera', 'height', value);
+                        document.getElementById('camera-height-value').textContent = value;
+                        console.log('Camera height set to:', value);
+                    });
+                    
+                    // Distance slider
+                    document.getElementById('camera-distance').addEventListener('input', function(e) {
+                        const value = parseFloat(e.target.value);
+                        cameraRig.setAttribute('third-person-camera', 'distance', value);
+                        document.getElementById('camera-distance-value').textContent = value;
+                        console.log('Camera distance set to:', value);
+                    });
+                    
+                    // Look height slider
+                    document.getElementById('camera-look-height').addEventListener('input', function(e) {
+                        const value = parseFloat(e.target.value);
+                        cameraRig.setAttribute('third-person-camera', 'lookAtHeight', value);
+                        document.getElementById('camera-look-height-value').textContent = value;
+                        console.log('Look height set to:', value);
+                    });
+                    
+                    // Toggle debug visualization
+                    document.getElementById('toggle-debug-viz').addEventListener('click', function() {
+                        if (cameraComponent.debugMode !== undefined) {
+                            cameraComponent.debugMode = !cameraComponent.debugMode;
+                            
+                            // Update visibility of debug elements
+                            if (cameraComponent.debugCamera) 
+                                cameraComponent.debugCamera.setAttribute('visible', cameraComponent.debugMode);
+                            if (cameraComponent.debugTarget) 
+                                cameraComponent.debugTarget.setAttribute('visible', cameraComponent.debugMode);
+                            if (cameraComponent.debugLine) 
+                                cameraComponent.debugLine.setAttribute('visible', cameraComponent.debugMode);
+                            if (cameraComponent.debugText) 
+                                cameraComponent.debugText.setAttribute('visible', cameraComponent.debugMode);
+                                
+                            console.log('Debug visualization:', cameraComponent.debugMode ? 'ON' : 'OFF');
+                        }
+                    });
+                    
+                    // Keyboard shortcut for toggling debug controls
+                    window.addEventListener('keydown', function(e) {
+                        if (e.key === 'o' || e.key === 'O') {
+                            const controls = document.getElementById('camera-debug-controls');
+                            controls.style.display = controls.style.display === 'none' ? 'block' : 'none';
+                        }
+                    });
                 }
             });
         </script>

@@ -40,6 +40,15 @@ AFRAME.registerComponent('third-person-camera', {
     // Create temporary vector for calculations
     this.tempVector = new THREE.Vector3();
 
+    this.debugMode = true; // Enable debug mode
+
+    // Create debug visualizations (requires entities in your scene)
+    this.debugCamera = this.el.sceneEl.querySelector('#debugCamera');
+    this.debugTarget = this.el.sceneEl.querySelector('#debugTarget');
+    this.debugLine = this.el.sceneEl.querySelector('#debugLine');
+    this.debugText = this.el.sceneEl.querySelector('#debugText');
+
+
     console.log("Third-person camera initialized with target:", this.data.target);
   },
 
@@ -77,6 +86,9 @@ AFRAME.registerComponent('third-person-camera', {
 
     // Make camera look at target plus height offset
     this.cameraEl.object3D.lookAt(this.targetPosition);
+
+    // Update debug visualizations
+    this.updateDebugVisuals(this.targetPosition);
   },
 
   handleCollision: function(idealPosition) {
@@ -105,6 +117,58 @@ AFRAME.registerComponent('third-person-camera', {
 
       this.cameraPosition.copy(this.targetPosition)
         .add(direction.multiplyScalar(collisionDistance));
+    }
+  },
+
+  updateDebugVisuals: function(targetPos) {
+    if (!this.debugMode) return;
+
+    // Update camera debug sphere
+    if (this.debugCamera) {
+      this.debugCamera.setAttribute('position', {
+        x: this.el.object3D.position.x,
+        y: this.el.object3D.position.y,
+        z: this.el.object3D.position.z
+      });
+    }
+
+    // Update target debug sphere
+    if (this.debugTarget) {
+      this.debugTarget.setAttribute('position', {
+        x: targetPos.x,
+        y: targetPos.y + this.data.lookAtHeight,
+        z: targetPos.z
+      });
+    }
+
+    // Update debug line
+    if (this.debugLine) {
+      this.debugLine.setAttribute('line', {
+        start: {
+          x: this.el.object3D.position.x,
+          y: this.el.object3D.position.y,
+          z: this.el.object3D.position.z
+        },
+        end: {
+          x: targetPos.x,
+          y: targetPos.y + this.data.lookAtHeight,
+          z: targetPos.z
+        }
+      });
+    }
+
+    // Update debug text with current values
+    if (this.debugText) {
+      this.debugText.setAttribute('position', {
+        x: this.el.object3D.position.x,
+        y: this.el.object3D.position.y + 1,
+        z: this.el.object3D.position.z
+      });
+
+      const cameraPos = this.el.object3D.position;
+      const formattedText = `Camera: ${cameraPos.x.toFixed(2)}, ${cameraPos.y.toFixed(2)}, ${cameraPos.z.toFixed(2)}\n` + 
+                           `Height: ${this.data.height.toFixed(2)}, Distance: ${this.data.distance.toFixed(2)}`;
+      this.debugText.setAttribute('value', formattedText);
     }
   },
 

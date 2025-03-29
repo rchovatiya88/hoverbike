@@ -16,7 +16,8 @@ AFRAME.registerComponent('player-component', {
     hoverDamping: { type: 'number', default: 0.95 },
     hoverForce: { type: 'number', default: 5 },
     hoverAmplitude: { type: 'number', default: 0.1 },
-    hoverFrequency: { type: 'number', default: 2 }
+    hoverFrequency: { type: 'number', default: 2 },
+    debug: { type: 'boolean', default: true }
   },
 
   init: function() {
@@ -45,6 +46,9 @@ AFRAME.registerComponent('player-component', {
 
     // Update health UI
     this.updateHealthBar();
+
+    // Setup debug information
+    this.setupDebugInfo();
 
     console.log("Player component initialized");
   },
@@ -409,6 +413,37 @@ AFRAME.registerComponent('player-component', {
     }
   },
 
+  setupDebugInfo: function() {
+    // Create debug text for player position
+    if (this.data.debug) {
+      this.debugText = document.createElement('a-text');
+      this.debugText.setAttribute('value', 'Player Position');
+      this.debugText.setAttribute('align', 'center');
+      this.debugText.setAttribute('position', '0 2 0');
+      this.debugText.setAttribute('scale', '0.5 0.5 0.5');
+      this.debugText.setAttribute('visible', 'false');
+      this.el.appendChild(this.debugText);
+
+      // Debug key is shared with camera component
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'd' || e.key === 'D') {
+          const isVisible = this.debugText.getAttribute('visible');
+          this.debugText.setAttribute('visible', !isVisible);
+
+          // Log current position when debug is toggled
+          const pos = this.el.object3D.position;
+          const rot = this.el.object3D.rotation;
+          console.log('Player position:', pos);
+          console.log('Player rotation:', {
+            x: THREE.MathUtils.radToDeg(rot.x),
+            y: THREE.MathUtils.radToDeg(rot.y),
+            z: THREE.MathUtils.radToDeg(rot.z)
+          });
+        }
+      });
+    }
+  },
+
   tick: function(time, delta) {
     if (this.isDead) return;
 
@@ -417,6 +452,20 @@ AFRAME.registerComponent('player-component', {
 
     // Update particle effects
     this.updateParticles(delta);
+
+    // Update debug text
+    if (this.debugText && this.debugText.getAttribute('visible')) {
+      const pos = this.el.object3D.position;
+      const rot = this.el.object3D.rotation;
+      const velocity = this.velocity;
+
+      const posText = `Pos: ${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)}`;
+      const rotText = `Rot: ${THREE.MathUtils.radToDeg(rot.y).toFixed(0)}°`;
+      const velText = `Vel: ${velocity.length().toFixed(2)} m/s`;
+
+      this.debugText.setAttribute('value', `${posText}\n${rotText}\n${velText}`);
+      this.debugText.setAttribute('position', `0 ${2 + (this.data.hoverHeight / 2)} 0`);
+    }
 
     // Check if player fell off the map
     if (this.el.object3D.position.y < -10) {
