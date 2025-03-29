@@ -1,522 +1,432 @@
-
 /* global AFRAME, THREE */
 
-// Prevent duplicate registration
-if (!AFRAME.components['player-component']) {
-  AFRAME.registerComponent('player-component', {
-    schema: {
-      speed: { type: 'number', default: 5 },
-      rotationSpeed: { type: 'number', default: 2 },
-      health: { type: 'number', default: 100 },
-      acceleration: { type: 'number', default: 30 },
-      deceleration: { type: 'number', default: 10 },
-      verticalSpeed: { type: 'number', default: 3 },
-      maxSpeed: { type: 'number', default: 8 }
-    },
+AFRAME.registerComponent('player-component', {
+  schema: {
+    speed: { type: 'number', default: 5 },
+    rotationSpeed: { type: 'number', default: 2 },
+    acceleration: { type: 'number', default: 30 },
+    deceleration: { type: 'number', default: 10 },
+    jumpForce: { type: 'number', default: 10 },
+    maxVelocity: { type: 'number', default: 20 },
+    health: { type: 'number', default: 100 },
+    maxHealth: { type: 'number', default: 100 },
+    gravityEnabled: { type: 'boolean', default: false },
+    gravity: { type: 'number', default: 9.8 },
+    hoverHeight: { type: 'number', default: 1.5 },
+    hoverDamping: { type: 'number', default: 0.95 },
+    hoverForce: { type: 'number', default: 5 },
+    hoverAmplitude: { type: 'number', default: 0.1 },
+    hoverFrequency: { type: 'number', default: 2 }
+  },
 
-    init: function () {
-      // Initialize movement variables
-      this.velocity = new THREE.Vector3(0, 0, 0);
-      this.acceleration = new THREE.Vector3(0, 0, 0);
-      this.keys = {
-        forward: false,
-        backward: false,
-        left: false,
-        right: false,
-        up: false, // For Q key (up)
-        down: false // For E key (down)
-      };
-      this.mouseX = 0;
-      this.mouseY = 0;
-      this.targetRotation = new THREE.Euler();
-      this.currentHealth = this.data.health;
-      this.dead = false;
-      this.gameManager = document.querySelector('[game-manager]');
-      
-      // Subscribe to key events
-      this.addEventListeners();
+  init: function() {
+    // Initialize state
+    this.velocity = new THREE.Vector3();
+    this.acceleration = new THREE.Vector3();
+    this.moveDirection = new THREE.Vector3();
+    this.keys = {};
+    this.isMoving = false;
+    this.isBoosting = false;
+    this.isGrounded = false;
+    this.hoverPhase = 0;
+    this.currentHealth = this.data.health;
+    this.isDead = false;
+    this.targetDirection = new THREE.Vector3(0, 0, -1);
 
-      console.log("Player component initialized with health:", this.currentHealth);
-      
-      // Set up health UI
-      this.updateHealthUI();
-    },
+    // Create physics helpers
+    this.raycaster = new THREE.Raycaster();
+    this.groundNormal = new THREE.Vector3(0, 1, 0);
 
-    // Set up event listeners for keyboard input
-    addEventListeners: function () {
-      // Key down events
-      this.onKeyDown = this.onKeyDown.bind(this);
-      this.onKeyUp = this.onKeyUp.bind(this);
-      this.onMouseMove = this.onMouseMove.bind(this);
+    // Create particle trail effect
+    this.initParticleTrail();
 
-      window.addEventListener('keydown', this.onKeyDown);
-      window.addEventListener('keyup', this.onKeyUp);
-      document.addEventListener('mousemove', this.onMouseMove);
-    },
-
-    onKeyDown: function (event) {
-      // Check if game is running (if game manager exists)
-      if (this.gameManager && 
-          this.gameManager.components &&
-          this.gameManager.components['game-manager'] &&
-          !this.gameManager.components['game-manager'].gameStarted) {
-        return;
-      }
-
-      // Handle key presses for movement
-      switch (event.code) {
-        case 'KeyW':
-          this.keys.forward = true;
-          break;
-        case 'KeyS':
-          this.keys.backward = true;
-          break;
-        case 'KeyA':
-          this.keys.left = true;
-          break;
-        case 'KeyD':
-          this.keys.right = true;
-          break;
-        case 'KeyQ': // Up
-          this.keys.up = true;
-          break;
-        case 'KeyE': // Down
-          this.keys.down = true;
-          break;
-      }
-    },
-
-    onKeyUp: function (event) {
-      // Handle key releases for movement
-      switch (event.code) {
-        case 'KeyW':
-          this.keys.forward = false;
-          break;
-        case 'KeyS':
-          this.keys.backward = false;
-          break;
-        case 'KeyA':
-          this.keys.left = false;
-          break;
-        case 'KeyD':
-          this.keys.right = false;
-          break;
-        case 'KeyQ': // Up
-          this.keys.up = false;
-          break;
-        case 'KeyE': // Down
-          this.keys.down = false;
-          break;
-      }
-    },
-
-    onMouseMove: function (event) {
-      // Only track mouse if pointer is locked (game is active)
-      if (document.pointerLockElement) {
-        this.mouseX = event.movementX || 0;
-      }
-    },
-
-    // Deal damage to player
-    takeDamage: function (amount) {
-      if (this.dead) return;
-
-      this.currentHealth = Math.max(0, this.currentHealth - amount);
-      this.updateHealthUI();
-      this.showDamageEffect();
-
-      // Check if player died
-      if (this.currentHealth <= 0) {
-        this.die();
-      }
-    },
-
-    // Show damage overlay effect
-    showDamageEffect: function () {
-      const damageOverlay = document.getElementById('damage-overlay');
-      if (damageOverlay) {
-        damageOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
-        setTimeout(() => {
-          damageOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0)';
-        }, 200);
-      }
-    },
+    // Setup event listeners
+    this.setupEventListeners();
 
     // Update health UI
-    updateHealthUI: function () {
-      const healthBar = document.getElementById('health-bar');
-      if (healthBar) {
-        const healthPercent = (this.currentHealth / this.data.health) * 100;
-        healthBar.style.width = healthPercent + '%';
+    this.updateHealthBar();
 
-        // Change color based on health
-        if (healthPercent > 60) {
-          healthBar.style.backgroundColor = '#0f0'; // Green
-        } else if (healthPercent > 30) {
-          healthBar.style.backgroundColor = '#ff0'; // Yellow
-        } else {
-          healthBar.style.backgroundColor = '#f00'; // Red
-        }
-      }
-    },
+    console.log("Player component initialized");
+  },
 
-    // Player death logic
-    die: function () {
-      this.dead = true;
+  setupEventListeners: function() {
+    // Keyboard events
+    this.onKeyDown = this.onKeyDown.bind(this);
+    this.onKeyUp = this.onKeyUp.bind(this);
+    this.onMouseMove = this.onMouseMove.bind(this);
 
-      // Notify game manager
-      if (this.gameManager && 
-          this.gameManager.components && 
-          this.gameManager.components['game-manager']) {
-        this.gameManager.components['game-manager'].playerDied();
-      }
+    window.addEventListener('keydown', this.onKeyDown);
+    window.addEventListener('keyup', this.onKeyUp);
+    document.addEventListener('mousemove', this.onMouseMove);
 
-      // Show game over screen
-      const gameMessage = document.getElementById('game-message');
-      if (gameMessage) {
-        gameMessage.innerHTML = 'Game Over!<br/><button id="restart-button">Restart</button>';
-        gameMessage.style.display = 'block';
+    // Listen for damage events
+    this.el.addEventListener('damage', this.onDamage.bind(this));
+    this.el.addEventListener('heal', this.onHeal.bind(this));
+  },
 
-        // Add restart button functionality
-        document.getElementById('restart-button').addEventListener('click', () => {
-          location.reload();
-        });
-      }
-    },
+  initParticleTrail: function() {
+    // Create simple particle trail effect (can be enhanced with a particle system)
+    this.particleGroup = new THREE.Group();
+    this.el.object3D.add(this.particleGroup);
 
-    tick: function (time, deltaTime) {
-      // Skip if player is dead or game is not running
-      if (this.dead || 
-         (this.gameManager && 
-          this.gameManager.components && 
-          this.gameManager.components['game-manager'] &&
-          !this.gameManager.components['game-manager'].gameStarted)) {
-        return;
-      }
+    this.particles = [];
+    this.particleCount = 10;
+    this.particleSize = 0.1;
 
-      // Delta time in seconds, clamped to avoid huge jumps
-      const dt = Math.min(deltaTime / 1000, 0.1);
-      
-      // Handle jetbike controls
-      this.processControls(dt);
-    },
+    const particleGeometry = new THREE.SphereGeometry(this.particleSize, 8, 8);
+    const particleMaterial = new THREE.MeshBasicMaterial({
+      color: 0x3399ff,
+      transparent: true,
+      opacity: 0.7
+    });
 
-    processControls: function(dt) {
-      try {
-        // Reset acceleration
-        this.acceleration.set(0, 0, 0);
-
-        // Get current rotation of player entity in radians
-        const rotation = this.el.object3D.rotation.y;
-
-        // Process keyboard input for movement
-        // Forward/backward
-        if (this.keys.forward) {
-          this.acceleration.z = -Math.cos(rotation) * this.data.acceleration;
-          this.acceleration.x = -Math.sin(rotation) * this.data.acceleration;
-        } else if (this.keys.backward) {
-          this.acceleration.z = Math.cos(rotation) * this.data.acceleration;
-          this.acceleration.x = Math.sin(rotation) * this.data.acceleration;
-        }
-
-        // Strafe left/right
-        if (this.keys.left) {
-          this.acceleration.z -= Math.sin(rotation) * this.data.acceleration;
-          this.acceleration.x += Math.cos(rotation) * this.data.acceleration;
-        } else if (this.keys.right) {
-          this.acceleration.z += Math.sin(rotation) * this.data.acceleration;
-          this.acceleration.x -= Math.cos(rotation) * this.data.acceleration;
-        }
-
-        // Up/down for flying
-        if (this.keys.up) {
-          this.acceleration.y = this.data.verticalSpeed;
-        } else if (this.keys.down) {
-          this.acceleration.y = -this.data.verticalSpeed;
-        }
-
-        // Apply acceleration to velocity
-        this.velocity.x += this.acceleration.x * dt;
-        this.velocity.y += this.acceleration.y * dt;
-        this.velocity.z += this.acceleration.z * dt;
-
-        // Apply deceleration (drag) when no key is pressed
-        if (!this.keys.forward && !this.keys.backward && !this.keys.left && !this.keys.right) {
-          this.velocity.x *= (1 - Math.min(dt * this.data.deceleration, 0.95));
-          this.velocity.z *= (1 - Math.min(dt * this.data.deceleration, 0.95));
-        }
-        
-        // Apply vertical deceleration if not moving up/down
-        if (!this.keys.up && !this.keys.down) {
-          this.velocity.y *= (1 - Math.min(dt * this.data.deceleration, 0.95));
-        }
-
-        // Cap velocity at max speed
-        const speedSq = this.velocity.x * this.velocity.x + 
-                        this.velocity.z * this.velocity.z;
-        if (speedSq > this.data.maxSpeed * this.data.maxSpeed) {
-          const speed = Math.sqrt(speedSq);
-          this.velocity.x = (this.velocity.x / speed) * this.data.maxSpeed;
-          this.velocity.z = (this.velocity.z / speed) * this.data.maxSpeed;
-        }
-
-        // Set a slight hover bobbing motion
-        const hoverOffset = Math.sin(time / 500) * 0.05;
-        
-        // Apply position changes from velocity
-        this.el.object3D.position.x += this.velocity.x * dt;
-        this.el.object3D.position.y += this.velocity.y * dt + hoverOffset;
-        this.el.object3D.position.z += this.velocity.z * dt;
-
-        // Rotate jetbike based on mouse movement
-        if (this.mouseX !== 0) {
-          this.el.object3D.rotation.y -= this.mouseX * 0.01 * this.data.rotationSpeed * dt;
-          this.mouseX = 0; // Reset after applying
-        }
-
-        // Prevent falling through the ground
-        if (this.el.object3D.position.y < 1) {
-          this.el.object3D.position.y = 1;
-          this.velocity.y = 0;
-        }
-      } catch (error) {
-        console.error("Error in player controls:", error);
-      }
-    },
-
-    remove: function () {
-      // Remove event listeners
-      window.removeEventListener('keydown', this.onKeyDown);
-      window.removeEventListener('keyup', this.onKeyUp);
-      document.removeEventListener('mousemove', this.onMouseMove);
-    }
-  });
-}
-
-/* global AFRAME, THREE */
-
-if (!AFRAME.components['player-component']) {
-  AFRAME.registerComponent('player-component', {
-    schema: {
-      speed: { type: 'number', default: 5 },
-      rotationSpeed: { type: 'number', default: 2 },
-      health: { type: 'number', default: 100 },
-      maxHealth: { type: 'number', default: 100 },
-      hoverHeight: { type: 'number', default: 1.5 },
-      hoverVariation: { type: 'number', default: 0.1 },
-      debug: { type: 'boolean', default: false }
-    },
-
-    init: function () {
-      // Player state
-      this.velocity = new THREE.Vector3(0, 0, 0);
-      this.acceleration = new THREE.Vector3(0, 0, 0);
-      this.keysPressed = {};
-      this.isAlive = true;
-      this.isMoving = false;
-      this.direction = new THREE.Vector3();
-      this.rotation = new THREE.Euler();
-
-      // Health initialization
-      this.currentHealth = this.data.health;
-      this.healthBar = document.getElementById('health-bar');
-      this.damageOverlay = document.getElementById('damage-overlay');
-      this.updateHealthBar();
-
-      // Hovering variables
-      this.hoverTime = 0;
-      this.hoverDelta = 0;
-      this.currentHoverHeight = this.data.hoverHeight;
-
-      // Camera reference
-      this.cameraEl = document.getElementById('camera');
-      this.pointerLocked = false;
-
-      // Set up event listeners
-      this.setupEventListeners();
-
-      console.log("Player component initialized with health:", this.currentHealth);
-    },
-
-    setupEventListeners: function() {
-      // Register keyboard event listeners
-      this.keydownHandler = this.handleKeyDown.bind(this);
-      this.keyupHandler = this.handleKeyUp.bind(this);
-      window.addEventListener('keydown', this.keydownHandler);
-      window.addEventListener('keyup', this.keyupHandler);
-
-      // Pointer lock change handler
-      document.addEventListener('pointerlockchange', () => {
-        this.pointerLocked = document.pointerLockElement === document.body;
+    for (let i = 0; i < this.particleCount; i++) {
+      const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+      particle.position.set(0, -0.5, 1 + (i * 0.1));
+      particle.visible = false;
+      this.particleGroup.add(particle);
+      this.particles.push({
+        mesh: particle,
+        life: 0,
+        maxLife: 1.0,
+        speed: 0.5 + Math.random() * 0.5
       });
-    },
+    }
+  },
 
-    handleKeyDown: function(event) {
-      this.keysPressed[event.code] = true;
-    },
+  updateParticles: function(delta) {
+    const deltaSeconds = delta / 1000;
+    const speed = this.velocity.length();
 
-    handleKeyUp: function(event) {
-      this.keysPressed[event.code] = false;
-    },
+    // Only emit particles when moving above a certain speed
+    const shouldEmit = speed > 2.0 && this.isMoving;
 
-    tick: function(time, delta) {
-      if (!this.isAlive || !this.pointerLocked) return;
+    for (const particle of this.particles) {
+      if (particle.life <= 0) {
+        if (shouldEmit) {
+          // Reset particle position to behind the player
+          particle.mesh.position.set(
+            (Math.random() - 0.5) * 0.3, 
+            -0.5 + (Math.random() - 0.5) * 0.2, 
+            1.0 + (Math.random() - 0.5) * 0.2
+          );
+          particle.life = particle.maxLife;
+          particle.mesh.visible = true;
+          particle.mesh.scale.set(1, 1, 1);
 
-      const dt = delta / 1000; // Convert to seconds
-
-      try {
-        // Calculate hover bobbing effect
-        this.hoverTime += dt;
-        this.hoverDelta = Math.sin(this.hoverTime * 2) * this.data.hoverVariation;
-        this.currentHoverHeight = this.data.hoverHeight + this.hoverDelta;
-
-        // Get camera direction for movement relative to view
-        const cameraRotation = this.cameraEl.object3D.rotation.y;
-
-        // Reset acceleration
-        this.acceleration.set(0, 0, 0);
-
-        // Handle keyboard input
-        const speedFactor = this.data.speed;
-
-        // Forward/backward movement
-        if (this.keysPressed['KeyW']) {
-          this.acceleration.x -= Math.sin(cameraRotation) * speedFactor;
-          this.acceleration.z -= Math.cos(cameraRotation) * speedFactor;
-        }
-        if (this.keysPressed['KeyS']) {
-          this.acceleration.x += Math.sin(cameraRotation) * speedFactor;
-          this.acceleration.z += Math.cos(cameraRotation) * speedFactor;
-        }
-
-        // Left/right movement (strafing)
-        if (this.keysPressed['KeyA']) {
-          this.acceleration.x -= Math.sin(cameraRotation + Math.PI/2) * speedFactor;
-          this.acceleration.z -= Math.cos(cameraRotation + Math.PI/2) * speedFactor;
-        }
-        if (this.keysPressed['KeyD']) {
-          this.acceleration.x += Math.sin(cameraRotation + Math.PI/2) * speedFactor;
-          this.acceleration.z += Math.cos(cameraRotation + Math.PI/2) * speedFactor;
-        }
-
-        // Up/down movement (vertical thrust)
-        if (this.keysPressed['KeyQ']) {
-          this.acceleration.y += speedFactor;
-        }
-        if (this.keysPressed['KeyE']) {
-          this.acceleration.y -= speedFactor;
-        }
-
-        // Apply acceleration to velocity with damping
-        this.velocity.x += this.acceleration.x * dt;
-        this.velocity.y += this.acceleration.y * dt;
-        this.velocity.z += this.acceleration.z * dt;
-
-        // Apply damping (drag)
-        const damping = 0.9;
-        this.velocity.x *= damping;
-        this.velocity.y *= damping;
-        this.velocity.z *= damping;
-
-        // Apply velocity to position
-        const position = this.el.object3D.position;
-        position.x += this.velocity.x * dt;
-        position.y += this.velocity.y * dt;
-        position.z += this.velocity.z * dt;
-
-        // Enforce minimum height
-        if (position.y < this.currentHoverHeight) {
-          position.y = this.currentHoverHeight;
-          this.velocity.y = 0;
-        }
-
-        // Update player rotation to face movement direction if moving
-        if (Math.abs(this.velocity.x) > 0.1 || Math.abs(this.velocity.z) > 0.1) {
-          this.isMoving = true;
-          const targetRotation = Math.atan2(this.velocity.x, this.velocity.z);
-
-          // Smoothly rotate toward movement direction
-          const currentRotation = this.el.object3D.rotation.y;
-          let deltaRotation = targetRotation - currentRotation;
-
-          // Ensure we rotate the shortest way
-          if (deltaRotation > Math.PI) deltaRotation -= Math.PI * 2;
-          if (deltaRotation < -Math.PI) deltaRotation += Math.PI * 2;
-
-          // Apply rotation with smoothing
-          this.el.object3D.rotation.y += deltaRotation * Math.min(dt * this.data.rotationSpeed, 1);
-        } else {
-          this.isMoving = false;
-        }
-      } catch (error) {
-        console.error('Error in player tick:', error);
-      }
-    },
-
-    takeDamage: function(amount) {
-      if (!this.isAlive) return;
-
-      this.currentHealth -= amount;
-
-      // Show damage effect
-      if (this.damageOverlay) {
-        this.damageOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
-        setTimeout(() => {
-          if (this.damageOverlay) {
-            this.damageOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0)';
+          // Set color based on movement speed
+          if (this.isBoosting) {
+            particle.mesh.material.color.setHex(0xff3333);
+          } else {
+            particle.mesh.material.color.setHex(0x3399ff);
           }
-        }, 100);
-      }
+        }
+      } else {
+        // Update active particle
+        particle.life -= deltaSeconds;
+        particle.mesh.position.z += particle.speed * deltaSeconds;
+        particle.mesh.material.opacity = particle.life / particle.maxLife;
+        particle.mesh.scale.multiplyScalar(0.95);
 
-      // Check for death
-      if (this.currentHealth <= 0) {
-        this.currentHealth = 0;
-        this.die();
-      }
-
-      this.updateHealthBar();
-    },
-
-    updateHealthBar: function() {
-      if (this.healthBar) {
-        const healthPercent = (this.currentHealth / this.data.maxHealth) * 100;
-        this.healthBar.style.width = healthPercent + '%';
-
-        // Change color based on health
-        if (healthPercent > 60) {
-          this.healthBar.style.backgroundColor = '#0f0'; // Green
-        } else if (healthPercent > 30) {
-          this.healthBar.style.backgroundColor = '#ff0'; // Yellow
-        } else {
-          this.healthBar.style.backgroundColor = '#f00'; // Red
+        if (particle.life <= 0) {
+          particle.mesh.visible = false;
         }
       }
-    },
+    }
+  },
 
-    die: function() {
-      this.isAlive = false;
+  onKeyDown: function(event) {
+    this.keys[event.key.toLowerCase()] = true;
 
-      // Show game over message
-      const gameMessage = document.getElementById('game-message');
-      if (gameMessage) {
-        gameMessage.innerHTML = 'Game Over<br><button id="restart-button">Restart</button>';
-        gameMessage.style.display = 'block';
+    // Handle reload key (R)
+    if (event.key.toLowerCase() === 'r') {
+      const weaponComponent = this.el.components['weapon-component'];
+      if (weaponComponent && weaponComponent.reload) {
+        weaponComponent.reload();
+      }
+    }
 
-        // Add restart button handler
-        document.getElementById('restart-button').addEventListener('click', () => {
-          // Reload the page to restart
+    // Handle boost key (Shift)
+    if (event.key === 'Shift') {
+      this.isBoosting = true;
+    }
+  },
+
+  onKeyUp: function(event) {
+    this.keys[event.key.toLowerCase()] = false;
+
+    // Handle boost key (Shift)
+    if (event.key === 'Shift') {
+      this.isBoosting = false;
+    }
+  },
+
+  onMouseMove: function(event) {
+    if (!document.pointerLockElement) return;
+
+    // This function only handles targeting direction for weapons
+    // The camera controls handle actual rotation
+  },
+
+  onDamage: function(event) {
+    const damage = event.detail.damage || 10;
+
+    this.currentHealth = Math.max(0, this.currentHealth - damage);
+    this.updateHealthBar();
+
+    // Show damage overlay
+    this.showDamageEffect();
+
+    if (this.currentHealth <= 0 && !this.isDead) {
+      this.die();
+    }
+  },
+
+  onHeal: function(event) {
+    const amount = event.detail.amount || 10;
+
+    this.currentHealth = Math.min(this.data.maxHealth, this.currentHealth + amount);
+    this.updateHealthBar();
+  },
+
+  updateHealthBar: function() {
+    const healthBar = document.getElementById('health-bar');
+    if (healthBar) {
+      const healthPercent = (this.currentHealth / this.data.maxHealth) * 100;
+      healthBar.style.width = `${healthPercent}%`;
+
+      // Change color based on health
+      if (healthPercent < 25) {
+        healthBar.style.backgroundColor = '#f00';
+      } else if (healthPercent < 50) {
+        healthBar.style.backgroundColor = '#ff0';
+      } else {
+        healthBar.style.backgroundColor = '#0f0';
+      }
+    }
+  },
+
+  showDamageEffect: function() {
+    const overlay = document.getElementById('damage-overlay');
+    if (overlay) {
+      overlay.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+      setTimeout(() => {
+        overlay.style.backgroundColor = 'rgba(255, 0, 0, 0)';
+      }, 100);
+    }
+  },
+
+  die: function() {
+    this.isDead = true;
+    console.log('Player died');
+
+    // Show game over message
+    const gameMessage = document.getElementById('game-message');
+    if (gameMessage) {
+      gameMessage.style.display = 'block';
+      gameMessage.innerHTML = 'Game Over!<br><button id="restart-button">Restart</button>';
+
+      const restartButton = document.getElementById('restart-button');
+      if (restartButton) {
+        restartButton.addEventListener('click', () => {
           window.location.reload();
         });
       }
-
-      // Release pointer lock
-      document.exitPointerLock();
-    },
-
-    remove: function() {
-      // Clean up event listeners
-      window.removeEventListener('keydown', this.keydownHandler);
-      window.removeEventListener('keyup', this.keyupHandler);
     }
-  });
-}
+
+    // Exit pointer lock
+    if (document.exitPointerLock) {
+      document.exitPointerLock();
+    }
+  },
+
+  respawn: function() {
+    this.isDead = false;
+    this.currentHealth = this.data.maxHealth;
+    this.updateHealthBar();
+    this.el.setAttribute('position', '0 1.5 0');
+    this.el.setAttribute('rotation', '0 0 0');
+    this.velocity.set(0, 0, 0);
+  },
+
+  updateMovement: function(delta) {
+    const deltaSeconds = delta / 1000;
+
+    // Get move inputs
+    this.moveDirection.set(0, 0, 0);
+
+    // Forward/backward
+    if (this.keys['w']) this.moveDirection.z -= 1;
+    if (this.keys['s']) this.moveDirection.z += 1;
+
+    // Left/right
+    if (this.keys['a']) this.moveDirection.x -= 1;
+    if (this.keys['d']) this.moveDirection.x += 1;
+
+    // Up/down (Q/E for hover bikes)
+    if (this.keys['q']) this.moveDirection.y += 1;
+    if (this.keys['e']) this.moveDirection.y -= 1;
+
+    // Check if moving at all
+    this.isMoving = (this.moveDirection.x !== 0 || this.moveDirection.z !== 0 || this.moveDirection.y !== 0);
+
+    // Normalize movement vector
+    if (this.moveDirection.length() > 0) {
+      this.moveDirection.normalize();
+    }
+
+    // Apply camera direction to movement (relative to camera)
+    const cameraEl = document.querySelector('[camera]');
+    if (cameraEl) {
+      const cameraObject = cameraEl.object3D;
+      const cameraDirection = new THREE.Vector3(0, 0, -1);
+      cameraDirection.applyQuaternion(cameraObject.quaternion);
+      cameraDirection.y = 0; // Keep movement on XZ plane
+      cameraDirection.normalize();
+
+      // Create a rotation matrix based on camera orientation (y-axis only)
+      const rotationMatrix = new THREE.Matrix4();
+      const eY = new THREE.Euler(0, Math.atan2(cameraDirection.x, cameraDirection.z), 0);
+      rotationMatrix.makeRotationFromEuler(eY);
+
+      // Apply rotation to movement direction
+      this.moveDirection.applyMatrix4(rotationMatrix);
+    }
+
+    // Calculate acceleration
+    let accelerationValue = this.data.acceleration;
+    let maxVelocity = this.data.maxVelocity;
+
+    if (this.isBoosting) {
+      accelerationValue *= 2;
+      maxVelocity *= 1.5;
+    }
+
+    // Apply acceleration in movement direction
+    if (this.isMoving) {
+      this.acceleration.copy(this.moveDirection).multiplyScalar(accelerationValue);
+    } else {
+      // Apply deceleration when not moving
+      const deceleration = this.data.deceleration;
+      this.acceleration.set(
+        -this.velocity.x * deceleration,
+        -this.velocity.y * deceleration,
+        -this.velocity.z * deceleration
+      );
+    }
+
+    // Apply gravity if enabled
+    if (this.data.gravityEnabled && !this.isGrounded) {
+      this.acceleration.y -= this.data.gravity;
+    }
+
+    // Update velocity with acceleration
+    this.velocity.add(this.acceleration.clone().multiplyScalar(deltaSeconds));
+
+    // Clamp velocity to max speed
+    if (this.velocity.length() > maxVelocity) {
+      this.velocity.normalize().multiplyScalar(maxVelocity);
+    }
+
+    // Apply hover effect for jetbike
+    this.applyHoverEffect(deltaSeconds);
+
+    // Move the player
+    const movement = this.velocity.clone().multiplyScalar(deltaSeconds);
+    this.el.object3D.position.add(movement);
+
+    // Face movement direction if moving
+    if (this.isMoving && (this.moveDirection.x !== 0 || this.moveDirection.z !== 0)) {
+      // Gradually rotate to match movement direction
+      const targetRotation = Math.atan2(this.moveDirection.x, this.moveDirection.z);
+      const currentRotation = this.el.object3D.rotation.y;
+
+      // Smoothly interpolate rotation
+      const rotationStep = this.data.rotationSpeed * deltaSeconds;
+      let newRotation = currentRotation;
+
+      // Calculate the shortest rotation path
+      const diff = targetRotation - currentRotation;
+      const shortestDiff = Math.atan2(Math.sin(diff), Math.cos(diff));
+
+      newRotation += Math.sign(shortestDiff) * Math.min(Math.abs(shortestDiff), rotationStep);
+
+      // Apply rotation
+      this.el.object3D.rotation.y = newRotation;
+    }
+  },
+
+  applyHoverEffect: function(deltaSeconds) {
+    // Simple hover effect for jetbike
+    this.hoverPhase += this.data.hoverFrequency * deltaSeconds;
+
+    // Sinusoidal hover motion
+    const hoverOffset = Math.sin(this.hoverPhase) * this.data.hoverAmplitude;
+
+    // Apply hover to the Y position
+    this.el.object3D.position.y = this.data.hoverHeight + hoverOffset;
+
+    // Slight roll/tilt based on movement
+    if (this.moveDirection.x !== 0) {
+      const targetTilt = this.moveDirection.x * 0.2; // Max tilt in radians
+      const currentTilt = this.el.object3D.rotation.z;
+
+      // Smooth tilt transition
+      this.el.object3D.rotation.z = currentTilt + (targetTilt - currentTilt) * 0.1;
+    } else {
+      // Return to level when not moving sideways
+      this.el.object3D.rotation.z *= 0.9;
+    }
+  },
+
+  checkGround: function() {
+    // Check distance to ground
+    const origin = this.el.object3D.position.clone();
+    origin.y += 0.1; // Start slightly above the player position
+
+    this.raycaster.set(origin, new THREE.Vector3(0, -1, 0));
+    this.raycaster.far = 2.0; // Maximum ground check distance
+
+    const intersects = this.raycaster.intersectObject(this.el.sceneEl.object3D, true);
+
+    // Filter out self-intersections
+    const validHits = intersects.filter(hit => {
+      const hitEntity = hit.object.el;
+      return hitEntity !== this.el;
+    });
+
+    if (validHits.length > 0) {
+      const groundDistance = validHits[0].distance;
+      this.isGrounded = groundDistance <= 0.2;
+
+      if (this.isGrounded) {
+        // Get ground normal for slopes
+        this.groundNormal.copy(validHits[0].face.normal);
+      }
+    } else {
+      this.isGrounded = false;
+    }
+  },
+
+  tick: function(time, delta) {
+    if (this.isDead) return;
+
+    // Update movement
+    this.updateMovement(delta);
+
+    // Update particle effects
+    this.updateParticles(delta);
+
+    // Check if player fell off the map
+    if (this.el.object3D.position.y < -10) {
+      this.onDamage({ detail: { damage: this.currentHealth } });
+    }
+  },
+
+  remove: function() {
+    // Remove event listeners
+    window.removeEventListener('keydown', this.onKeyDown);
+    window.removeEventListener('keyup', this.onKeyUp);
+    document.removeEventListener('mousemove', this.onMouseMove);
+  }
+});
