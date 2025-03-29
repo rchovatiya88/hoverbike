@@ -586,7 +586,7 @@ if (!AFRAME.components['enemy-component']) {
         console.error('Error handling enemy death:', error);
       }
     },
-    tick: function(time, delta) {
+    tick: function(time, deltaTime) {
     try {
       if (!this.isAlive) return;
 
@@ -617,7 +617,7 @@ if (!AFRAME.components['enemy-component']) {
         // Simple movement logic
         if (distance > 3) {
           // Move toward player
-          const moveSpeed = (this.data.speed || 2) * (delta / 1000);
+          const moveSpeed = (this.data.speed || 2) * (deltaTime / 1000);
           this.el.object3D.position.add(direction.multiplyScalar(moveSpeed));
 
           // Make enemy look at player
@@ -625,9 +625,19 @@ if (!AFRAME.components['enemy-component']) {
         }
       } else {
         // YUKA AI update
-        const dt = delta / 1000;
+        const dt = deltaTime / 1000;
         this.time.update(dt);
-        this.entityManager.update(dt);
+        // Get reference to the game manager's entity manager
+        const gameManager = document.querySelector('[game-manager]');
+        if (gameManager && gameManager.components && 
+            gameManager.components['game-manager'] && 
+            gameManager.components['game-manager'].entityManager) {
+          // The game manager will update all entities
+          // No need to update here
+        } else if (this.entityManager) {
+          // Only update local entity manager if needed
+          this.entityManager.update(dt);
+        }
 
         // Update the entity's position based on the AI vehicle
         if (this.vehicle) {
@@ -804,7 +814,7 @@ function createParticles(scene, position, color, count, lifespan) {
       if (elapsed >= lifespan) {
         scene.removeChild(particle);
         particle.removeEventListener('tick', tick);
-      }
+      }      }
     };
 
     particle.addEventListener('tick', tick);

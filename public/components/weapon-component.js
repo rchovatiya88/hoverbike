@@ -36,35 +36,62 @@ if (!AFRAME.components['weapon-component']) {
       }
     },
 
-    createWeaponModel: function () {
-      try {
-        // Create weapon group to hold geometry and effects
-        this.weaponGroup = new THREE.Group();
+    createWeaponModel: function() {
+    try {
+      // Check if we're dealing with a jetbike or regular weapon
+      const isJetbike = this.el.closest('#player') !== null;
 
-        // Create a basic laser cannon model
-        const barrelGeometry = new THREE.CylinderGeometry(0.05, 0.05, 0.4, 8);
-        const barrelMaterial = new THREE.MeshStandardMaterial({
-          color: 0x888888,
+      if (isJetbike) {
+        // For jetbike, we don't create a visible weapon model
+        // Just create a simple invisible object to hold the muzzle flash
+        const weaponObject = new THREE.Group();
+        this.el.setObject3D('mesh', weaponObject);
+
+        // Add a simple muzzle flash (yellow sphere, initially hidden)
+        const flashGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+        const flashMaterial = new THREE.MeshBasicMaterial({
+          color: 0xffff00,
+          transparent: true,
+          opacity: 0.8
+        });
+        this.muzzleFlash = new THREE.Mesh(flashGeometry, flashMaterial);
+        this.muzzleFlash.visible = false; // Initially hidden
+        this.muzzleFlash.position.set(0, 0, -1.0); // At the front
+        weaponObject.add(this.muzzleFlash);
+      } else {
+        // Create a simple weapon model (a red box)
+        const weaponGeometry = new THREE.BoxGeometry(0.2, 0.2, 1);
+        const weaponMaterial = new THREE.MeshStandardMaterial({
+          color: 0xff0000,
           metalness: 0.8,
           roughness: 0.2
         });
-        const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
-        barrel.rotation.x = Math.PI / 2; // Rotate to point forward
+        const weaponMesh = new THREE.Mesh(weaponGeometry, weaponMaterial);
 
-        // Add barrel to weapon group
-        this.weaponGroup.add(barrel);
+        // Position the weapon model in front of the camera/player
+        weaponMesh.position.set(0, 0, -0.5);
 
-        // Set the weapon group as our weapon object
-        this.el.setObject3D('weapon', this.weaponGroup);
+        // Add the weapon model to the entity
+        this.el.setObject3D('mesh', weaponMesh);
 
-        // For third-person mode, we only need effects
-        if (this.el.sceneEl.systems.camera && document.getElementById('camera-rig')) {
-          this.weaponGroup.visible = true; // Keep visible for effects
-        }
-      } catch (error) {
-        console.error('Error creating weapon model:', error);
+        // Add a simple muzzle flash (yellow sphere, initially hidden)
+        const flashGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+        const flashMaterial = new THREE.MeshBasicMaterial({
+          color: 0xffff00,
+          transparent: true,
+          opacity: 0.8
+        });
+        this.muzzleFlash = new THREE.Mesh(flashGeometry, flashMaterial);
+        this.muzzleFlash.visible = false; // Initially hidden
+        this.muzzleFlash.position.set(0, 0, -1.0); // At the end of the weapon
+        weaponMesh.add(this.muzzleFlash);
       }
-    },
+
+      console.log('Weapon model created');
+    } catch (error) {
+      console.error('Error creating weapon model:', error);
+    }
+  },
 
     createMuzzleFlash: function () {
       // Create muzzle flash
