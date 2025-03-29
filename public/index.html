@@ -23,6 +23,8 @@
         <script src="components/simple-navmesh-constraint.js"></script>
         <script src="components/model-camera-fix.js"></script>
         <script src="components/third-person-camera.js"></script>
+        <script src="components/position-debug.js"></script>
+        <script src="components/camera-test.js"></script>
 
         <style>
             body {
@@ -203,6 +205,8 @@
             vr-mode-ui="enabled: false"
             renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true;"
             simple-navmesh-constraint="navmesh:.navmesh;fall:0.5;height:0;exclude:.navmesh-hole;"
+            position-debug="player: #player; camera: #camera-rig"
+            camera-test
         >
             <a-assets>
                 <!-- Sound assets removed to fix encoding errors -->
@@ -212,6 +216,13 @@
                 ></a-asset-item>
                 <!-- Simple enemy model (box for now) -->
                 <a-mixin
+
+            <div id="debug-overlay" style="position: absolute; top: 60px; left: 20px; background-color: rgba(0,0,0,0.5); color: white; padding: 10px; border-radius: 5px; font-family: monospace; z-index: 100;">
+                <div>Player Position: <span id="player-pos">N/A</span></div>
+                <div>Player Rotation: <span id="player-rot">N/A</span></div>
+                <div>Camera Rotation: <span id="camera-rot">N/A</span></div>
+            </div>
+
                     id="enemy-mixin"
                     geometry="primitive: box; width: 1; height: 1; depth: 1"
                     material="color: red"
@@ -342,6 +353,12 @@
                     position="0.5 0 -0.2"
                     rotation="0 0 0"
                 >
+                </a-entity>
+                
+                <!-- Direction indicators for debugging -->
+                <a-entity id="forward-indicator" position="0 0 -3">
+                    <a-box color="red" scale="0.2 0.2 3"></a-box>
+                    <a-text value="FORWARD" position="0 0.5 -1.5" scale="2 2 2" align="center" color="red"></a-text>
                 </a-entity>
             </a-entity>
 
