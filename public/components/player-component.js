@@ -1,255 +1,354 @@
-AFRAME.registerComponent('player-component', {
-  schema: {
-    speed: { type: 'number', default: 5 },
-    health: { type: 'number', default: 100 },
-    rotationSpeed: { type: 'number', default: 2 },
-    hoverHeight: { type: 'number', default: 1.5 },
-    hoverVariance: { type: 'number', default: 0.1 },
-    acceleration: { type: 'number', default: 0.1 },
-    deceleration: { type: 'number', default: 0.05 },
-    verticalSpeed: { type: 'number', default: 3 },
-    maxSpeed: { type: 'number', default: 10 }
-  },
 
-  init: function () {
-    // Initialize movement variables
-    this.velocity = new THREE.Vector3(0, 0, 0);
-    this.acceleration = new THREE.Vector3(0, 0, 0);
-    this.targetRotation = new THREE.Euler();
-    this.moveVector = new THREE.Vector3(0, 0, 0);
-    this.targetPosition = new THREE.Vector3();
-    this.cameraEl = document.getElementById('camera');
+/* global AFRAME, THREE */
 
-    // Input state
-    this.keys = {
-      forward: false,
-      backward: false,
-      left: false,
-      right: false,
-      ascend: false,
-      descend: false
-    };
+if (!AFRAME.components['player-component']) {
+  AFRAME.registerComponent('player-component', {
+    schema: {
+      speed: { type: 'number', default: 2 },
+      rotationSpeed: { type: 'number', default: 3 },
+      health: { type: 'number', default: 100 },
+      maxHealth: { type: 'number', default: 100 },
+      jumpForce: { type: 'number', default: 10 },
+      gravity: { type: 'number', default: 9.8 }
+    },
 
-    // Movement state
-    this.movementEnabled = true;
-    this.health = this.data.health;
-    this.isAlive = true;
-    this.isHovering = true;
-    this.hoverTime = 0;
-
-    // Setup health display
-    this.updateHealthDisplay();
-
-    // Setup event listeners
-    this.setupEventListeners();
-
-    console.log('Player component initialized');
-  },
-
-  updateHealthDisplay: function() {
-    const healthBar = document.getElementById('health-bar');
-    if (healthBar) {
-      const healthPercent = Math.max(0, this.health) / this.data.health * 100;
-      healthBar.style.width = healthPercent + '%';
-
-      // Change color based on health
-      if (healthPercent > 50) {
-        healthBar.style.backgroundColor = '#0f0';  // Green
-      } else if (healthPercent > 25) {
-        healthBar.style.backgroundColor = '#ff0';  // Yellow
+    init: function () {
+      // Player state
+      this.health = this.data.health;
+      this.isDead = false;
+      this.isJumping = false;
+      this.velocity = new THREE.Vector3(0, 0, 0);
+      this.acceleration = new THREE.Vector3(0, 0, 0);
+      this.direction = new THREE.Vector3(0, 0, 0);
+      
+      // Controls state
+      this.keys = {
+        forward: false,
+        backward: false,
+        left: false,
+        right: false,
+        up: false,
+        down: false,
+        sprint: false
+      };
+      
+      // Cache references
+      this.camera = document.getElementById('camera');
+      this.cameraRig = document.getElementById('camera-rig');
+      
+      // Set up event listeners
+      this.addEventListeners();
+      
+      // Initialize health display
+      this.updateHealthDisplay();
+      
+      // Animation mixer for player model animations
+      if (this.el.getObject3D('mesh')) {
+        this.setupAnimations();
       } else {
-        healthBar.style.backgroundColor = '#f00';  // Red
+        this.el.addEventListener('model-loaded', this.setupAnimations.bind(this));
       }
-    }
-  },
+      
+      // Initial position - useful for respawning
+      this.initialPosition = this.el.object3D.position.clone();
+      
+      // Override A-Frame look controls
+      if (this.camera && this.camera.components['look-controls']) {
+        this.camera.components['look-controls'].pitchObject.rotation.x = 0;
+        this.camera.components['look-controls'].yawObject.rotation.y = 0;
+      }
+    },
 
-  setupEventListeners: function() {
-    // Keyboard event listeners
-    this.onKeyDown = this.handleKeyDown.bind(this);
-    this.onKeyUp = this.handleKeyUp.bind(this);
-
-    window.addEventListener('keydown', this.onKeyDown);
-    window.addEventListener('keyup', this.onKeyUp);
-
-    // Handle damage events
-    this.el.addEventListener('player-damage', this.onDamage.bind(this));
-  },
-
-  handleKeyDown: function(event) {
-    const code = event.code;
-
-    // Check if game is paused or player is dead
-    if (!this.movementEnabled || !this.isAlive) return;
-
-    switch(code) {
-      case 'KeyW': this.keys.forward = true; break;
-      case 'KeyS': this.keys.backward = true; break;
-      case 'KeyA': this.keys.left = true; break;
-      case 'KeyD': this.keys.right = true; break;
-      case 'KeyQ': this.keys.ascend = true; break;
-      case 'KeyE': this.keys.descend = true; break;
-    }
-  },
-
-  handleKeyUp: function(event) {
-    const code = event.code;
-
-    switch(code) {
-      case 'KeyW': this.keys.forward = false; break;
-      case 'KeyS': this.keys.backward = false; break;
-      case 'KeyA': this.keys.left = false; break;
-      case 'KeyD': this.keys.right = false; break;
-      case 'KeyQ': this.keys.ascend = false; break;
-      case 'KeyE': this.keys.descend = false; break;
-    }
-  },
-
-  onDamage: function(event) {
-    const damage = event.detail.damage;
-
-    // Apply damage to player
-    this.health = Math.max(0, this.health - damage);
-    this.updateHealthDisplay();
-
-    // Show damage overlay
-    const overlay = document.getElementById('damage-overlay');
-    if (overlay) {
-      overlay.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
-      setTimeout(() => {
-        overlay.style.backgroundColor = 'rgba(255, 0, 0, 0)';
-      }, 100);
-    }
-
-    // Check if player is dead
-    if (this.health <= 0 && this.isAlive) {
-      this.isAlive = false;
-      this.death();
-    }
-  },
-
-  death: function() {
-    this.movementEnabled = false;
-
-    // Display game over message
-    const gameMessage = document.getElementById('game-message');
-    if (gameMessage) {
-      gameMessage.innerHTML = 'Game Over<br /><button id="restart-button">Restart</button>';
-      gameMessage.style.display = 'block';
-
-      // Add event listener to restart button
-      document.getElementById('restart-button').addEventListener('click', () => {
-        window.location.reload();
-      });
-    }
-
-    // Tell game manager player is dead
-    const gameManagerEl = document.querySelector('[game-manager]');
-    if (gameManagerEl && gameManagerEl.components['game-manager']) {
-      gameManagerEl.components['game-manager'].onPlayerDeath();
-    }
-  },
-
-  updateMovement: function(deltaTime) {
-    // Get movement input
-    this.moveVector.set(0, 0, 0);
-
-    // Forward/backward movement
-    if (this.keys.forward) this.moveVector.z -= 1;
-    if (this.keys.backward) this.moveVector.z += 1;
-
-    // Left/right movement
-    if (this.keys.left) this.moveVector.x -= 1;
-    if (this.keys.right) this.moveVector.x += 1;
-
-    // Normalize movement vector if necessary
-    if (this.moveVector.length() > 1) {
-      this.moveVector.normalize();
-    }
-
-    // Get camera direction to align movement with view
-    if (this.cameraEl) {
-      const cameraRotation = this.cameraEl.object3D.rotation;
-      const forward = new THREE.Vector3(0, 0, -1);
-      forward.applyEuler(new THREE.Euler(0, cameraRotation.y, 0));
-
-      const right = new THREE.Vector3(1, 0, 0);
-      right.applyEuler(new THREE.Euler(0, cameraRotation.y, 0));
-
-      // Calculate movement direction
-      const moveDir = new THREE.Vector3();
-      moveDir.addScaledVector(forward, -this.moveVector.z);
-      moveDir.addScaledVector(right, this.moveVector.x);
-
-      // Apply horizontal movement
-      if (moveDir.length() > 0) {
-        moveDir.normalize();
-        this.velocity.x += moveDir.x * this.data.acceleration * this.data.speed;
-        this.velocity.z += moveDir.z * this.data.acceleration * this.data.speed;
-
-        // Update rotation to match movement direction
-        if (moveDir.length() > 0.1) {
-          this.targetRotation.y = Math.atan2(moveDir.x, -moveDir.z);
+    addEventListeners: function () {
+      // Keyboard event listeners
+      this.keydownHandler = this.handleKeyDown.bind(this);
+      this.keyupHandler = this.handleKeyUp.bind(this);
+      
+      window.addEventListener('keydown', this.keydownHandler);
+      window.addEventListener('keyup', this.keyupHandler);
+      
+      // Collision event listeners
+      this.el.addEventListener('collidestart', this.handleCollision.bind(this));
+      
+      // Game event listeners
+      document.addEventListener('game-started', this.onGameStarted.bind(this));
+      document.addEventListener('game-reset', this.onGameReset.bind(this));
+      
+      // Damage event
+      this.el.addEventListener('damage', this.onDamage.bind(this));
+    },
+    
+    setupAnimations: function() {
+      const mesh = this.el.getObject3D('mesh');
+      if (!mesh) return;
+      
+      // If model has animations, set up the mixer
+      if (mesh.animations && mesh.animations.length) {
+        this.mixer = new THREE.AnimationMixer(mesh);
+        this.actions = {};
+        
+        mesh.animations.forEach(animation => {
+          this.actions[animation.name] = this.mixer.clipAction(animation);
+        });
+        
+        // Play idle animation if available
+        if (this.actions['idle']) {
+          this.actions['idle'].play();
         }
       }
-    }
+    },
 
-    // Vertical movement
-    if (this.keys.ascend) {
-      this.velocity.y += this.data.acceleration * this.data.verticalSpeed;
-    }
-    if (this.keys.descend && this.el.object3D.position.y > this.data.hoverHeight) {
-      this.velocity.y -= this.data.acceleration * this.data.verticalSpeed;
-    }
+    handleKeyDown: function (event) {
+      const gameManager = document.querySelector('[game-manager]');
+      if (!gameManager || !gameManager.components['game-manager'] || 
+          !gameManager.components['game-manager'].gameStarted) return;
+      
+      switch (event.code) {
+        case 'KeyW': this.keys.forward = true; break;
+        case 'KeyS': this.keys.backward = true; break;
+        case 'KeyA': this.keys.left = true; break;
+        case 'KeyD': this.keys.right = true; break;
+        case 'KeyQ': this.keys.up = true; break;
+        case 'KeyE': this.keys.down = true; break;
+        case 'ShiftLeft': this.keys.sprint = true; break;
+      }
+    },
 
-    // Apply deceleration
-    this.velocity.x *= (1 - this.data.deceleration);
-    this.velocity.z *= (1 - this.data.deceleration);
-    this.velocity.y *= (1 - this.data.deceleration);
+    handleKeyUp: function (event) {
+      switch (event.code) {
+        case 'KeyW': this.keys.forward = false; break;
+        case 'KeyS': this.keys.backward = false; break;
+        case 'KeyA': this.keys.left = false; break;
+        case 'KeyD': this.keys.right = false; break;
+        case 'KeyQ': this.keys.up = false; break;
+        case 'KeyE': this.keys.down = false; break;
+        case 'ShiftLeft': this.keys.sprint = false; break;
+      }
+    },
 
-    // Apply hover effect - gentle bobbing
-    if (this.isHovering) {
-      this.hoverTime += deltaTime;
-      const hoverOffset = Math.sin(this.hoverTime * 2) * this.data.hoverVariance;
+    handleCollision: function (event) {
+      // Handle collisions with environment or enemies
+      const collidingEntity = event.detail.body.el;
+      
+      if (collidingEntity && collidingEntity.components && 
+          collidingEntity.components['enemy-component']) {
+        // Take damage from enemy collision
+        this.takeDamage(10);
+      }
+    },
+    
+    onGameStarted: function() {
+      // Reset player when game starts
+      this.reset();
+    },
+    
+    onGameReset: function() {
+      // Reset player position and health
+      this.reset();
+    },
+    
+    reset: function() {
+      // Reset player to initial state
+      this.health = this.data.maxHealth;
+      this.isDead = false;
+      this.el.object3D.position.copy(this.initialPosition);
+      this.velocity.set(0, 0, 0);
+      this.updateHealthDisplay();
+    },
 
-      // Apply hover force if below hover height
-      const currentHeight = this.el.object3D.position.y;
-      const targetHeight = this.data.hoverHeight + hoverOffset;
+    takeDamage: function (amount) {
+      if (this.isDead) return;
+      
+      this.health -= amount;
+      
+      // Show damage overlay
+      const damageOverlay = document.getElementById('damage-overlay');
+      if (damageOverlay) {
+        damageOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+        setTimeout(() => {
+          damageOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0)';
+        }, 200);
+      }
+      
+      // Update health display
+      this.updateHealthDisplay();
+      
+      // Check if player died
+      if (this.health <= 0) {
+        this.health = 0;
+        this.die();
+      }
+    },
+    
+    onDamage: function(event) {
+      const damage = event.detail.damage || 10;
+      this.takeDamage(damage);
+    },
 
-      if (currentHeight < targetHeight) {
-        this.velocity.y += (targetHeight - currentHeight) * 0.05;
+    die: function () {
+      this.isDead = true;
+      
+      // Trigger game over
+      const gameOverEvent = new CustomEvent('game-over');
+      document.dispatchEvent(gameOverEvent);
+      
+      // Show game over message
+      const gameMessage = document.getElementById('game-message');
+      if (gameMessage) {
+        gameMessage.style.display = 'block';
+        gameMessage.innerHTML = 'Game Over!<br><button id="restart-button">Restart</button>';
+        
+        // Add restart button handler
+        const restartButton = document.getElementById('restart-button');
+        if (restartButton) {
+          restartButton.addEventListener('click', () => {
+            gameMessage.style.display = 'none';
+            
+            // Trigger game reset
+            const gameResetEvent = new CustomEvent('game-reset');
+            document.dispatchEvent(gameResetEvent);
+            
+            // Request pointer lock again
+            document.body.requestPointerLock();
+          });
+        }
+      }
+    },
+
+    updateHealthDisplay: function () {
+      const healthBar = document.getElementById('health-bar');
+      if (healthBar) {
+        const healthPercent = (this.health / this.data.maxHealth) * 100;
+        healthBar.style.width = healthPercent + '%';
+        
+        // Change color based on health level
+        if (healthPercent > 60) {
+          healthBar.style.backgroundColor = '#0f0'; // Green
+        } else if (healthPercent > 30) {
+          healthBar.style.backgroundColor = '#ff0'; // Yellow
+        } else {
+          healthBar.style.backgroundColor = '#f00'; // Red
+        }
+      }
+    },
+
+    tick: function (time, delta) {
+      // Skip if player is dead or game isn't running
+      if (this.isDead) return;
+      
+      const gameManager = document.querySelector('[game-manager]');
+      if (!gameManager || !gameManager.components['game-manager'] || 
+          !gameManager.components['game-manager'].gameStarted) return;
+      
+      // Convert delta to seconds
+      const dt = delta / 1000;
+      
+      // Update animations if mixer exists
+      if (this.mixer) {
+        this.mixer.update(dt);
+      }
+      
+      // Update player movement
+      this.updateMovement(dt);
+      
+      // Apply hover effect
+      this.applyHoverEffect(time);
+    },
+
+    updateMovement: function (dt) {
+      // Get camera direction for movement relative to where player is looking
+      if (!this.camera) return;
+      
+      const rotation = this.camera.object3D.rotation;
+      const speedFactor = this.keys.sprint ? 2 : 1;
+      const moveSpeed = this.data.speed * speedFactor * dt;
+      
+      // Reset movement direction
+      this.direction.set(0, 0, 0);
+      
+      // Forward/backward movement
+      if (this.keys.forward) {
+        this.direction.z -= 1;
+      }
+      if (this.keys.backward) {
+        this.direction.z += 1;
+      }
+      
+      // Left/right movement
+      if (this.keys.left) {
+        this.direction.x -= 1;
+      }
+      if (this.keys.right) {
+        this.direction.x += 1;
+      }
+      
+      // Up/down movement (for jetbike)
+      if (this.keys.up) {
+        this.direction.y += 1;
+      }
+      if (this.keys.down) {
+        this.direction.y -= 1;
+      }
+      
+      // Normalize direction vector if moving diagonally
+      if (this.direction.length() > 0) {
+        this.direction.normalize();
+      }
+      
+      // Apply camera-relative movement
+      // Convert camera Y rotation to a rotation matrix
+      const cameraY = new THREE.Matrix4().makeRotationY(this.cameraRig.object3D.rotation.y);
+      // Apply camera rotation to movement direction vector
+      this.direction.applyMatrix4(cameraY);
+      
+      // Move the player
+      this.velocity.x = this.direction.x * moveSpeed * 60;
+      this.velocity.z = this.direction.z * moveSpeed * 60;
+      this.velocity.y = this.direction.y * moveSpeed * 60;
+      
+      // Apply velocity to position
+      this.el.object3D.position.x += this.velocity.x * dt;
+      this.el.object3D.position.y += this.velocity.y * dt;
+      this.el.object3D.position.z += this.velocity.z * dt;
+      
+      // Rotate jetbike to face movement direction if moving
+      if (this.direction.length() > 0) {
+        // Calculate target rotation
+        const targetRotation = Math.atan2(this.direction.x, this.direction.z);
+        
+        // Smoothly rotate towards movement direction
+        let currentRotation = this.el.object3D.rotation.y;
+        const rotationDiff = targetRotation - currentRotation;
+        
+        // Handle angle wrapping
+        let angleDiff = (rotationDiff + Math.PI) % (Math.PI * 2) - Math.PI;
+        
+        // Apply smooth rotation
+        this.el.object3D.rotation.y += angleDiff * dt * this.data.rotationSpeed;
+      }
+    },
+    
+    applyHoverEffect: function(time) {
+      // Add a gentle bobbing hover effect
+      const hoverHeight = Math.sin(time * 0.003) * 0.05;
+      const hoverTilt = Math.sin(time * 0.002) * 0.02;
+      
+      // Apply hover height
+      this.el.object3D.position.y += hoverHeight;
+      
+      // Apply hover tilt (slight roll)
+      this.el.object3D.rotation.z = hoverTilt;
+    },
+
+    remove: function () {
+      // Remove event listeners
+      window.removeEventListener('keydown', this.keydownHandler);
+      window.removeEventListener('keyup', this.keyupHandler);
+      
+      // Clean up animation mixer
+      if (this.mixer) {
+        this.mixer.stopAllAction();
       }
     }
-
-    // Apply velocity
-    const position = this.el.object3D.position;
-    position.x += this.velocity.x * deltaTime;
-    position.y += this.velocity.y * deltaTime;
-    position.z += this.velocity.z * deltaTime;
-
-    // Apply rotation with smoothing
-    const currentRotation = this.el.object3D.rotation;
-    currentRotation.y += (this.targetRotation.y - currentRotation.y) * 0.1;
-
-    // Ensure we don't go below ground level (with a small buffer)
-    if (position.y < 0.1) {
-      position.y = 0.1;
-      this.velocity.y = 0;
-    }
-  },
-
-  tick: function (time, deltaTime) {
-    // Convert to seconds for easier physics calculations
-    const dt = deltaTime / 1000;
-
-    if (this.isAlive && this.movementEnabled) {
-      this.updateMovement(dt);
-    }
-  },
-
-  remove: function () {
-    // Clean up event listeners
-    window.removeEventListener('keydown', this.onKeyDown);
-    window.removeEventListener('keyup', this.onKeyUp);
-    this.el.removeEventListener('player-damage', this.onDamage);
-  }
-});
+  });
+}
