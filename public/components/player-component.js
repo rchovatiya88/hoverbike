@@ -143,27 +143,34 @@ AFRAME.registerComponent('player-component', {
   },
 
   onKeyDown: function(event) {
-    this.keys[event.key.toLowerCase()] = true;
+    this.keys[event.code] = true;
 
-    // Handle reload key (R)
-    if (event.key.toLowerCase() === 'r') {
-      const weaponComponent = this.el.components['weapon-component'];
-      if (weaponComponent && weaponComponent.reload) {
-        weaponComponent.reload();
-      }
+    // Handle vertical movement with Q/E keys
+    if (event.code === 'KeyQ' && !this.isDead) {
+      // Upward movement
+      this.velocity.y = this.data.moveSpeed;
+    }
+    if (event.code === 'KeyE' && !this.isDead) {
+      // Downward movement
+      this.velocity.y = -this.data.moveSpeed;
     }
 
-    // Handle boost key (Shift)
-    if (event.key === 'Shift') {
+    // Toggle boost
+    if (event.code === 'ShiftLeft') {
       this.isBoosting = true;
     }
   },
 
   onKeyUp: function(event) {
-    this.keys[event.key.toLowerCase()] = false;
+    this.keys[event.code] = false;
 
-    // Handle boost key (Shift)
-    if (event.key === 'Shift') {
+    // Reset vertical velocity when Q/E released
+    if ((event.code === 'KeyQ' || event.code === 'KeyE') && !this.isDead) {
+      this.velocity.y *= 0.5; // Gentle stop
+    }
+
+    // Toggle boost off
+    if (event.code === 'ShiftLeft') {
       this.isBoosting = false;
     }
   },
@@ -412,14 +419,33 @@ AFRAME.registerComponent('player-component', {
     }
   },
 
-  tick: function(time, delta) {
+  tick: function(time, deltaTime) {
     if (this.isDead) return;
 
-    // Update movement
-    this.updateMovement(delta);
+    // Convert to seconds
+    const deltaSeconds = deltaTime / 1000;
 
-    // Update particle effects
-    this.updateParticles(delta);
+    // Reset acceleration
+    this.acceleration.set(0, 0, 0);
+
+    // Apply hover effect for flying jetbike (independent of ground)
+    this.hoverPhase += deltaSeconds * this.data.hoverFrequency;
+    const hoverOffset = Math.sin(this.hoverPhase) * this.data.hoverAmplitude;
+    this.el.object3D.position.y += hoverOffset * deltaSeconds;
+
+    // Check if near objects for collision purposes
+    const raycaster = new THREE.Raycaster(
+      this.el.object3D.position,
+      new THREE.Vector3(0, -1, 0)
+    );
+    const intersections = raycaster.intersectObjects(
+      document.querySelector('a-scene').object3D.children,
+      true
+    );
+
+
+    this.updateMovement(deltaTime);
+    this.updateParticles(deltaTime);
 
     // Check if player fell off the map
     if (this.el.object3D.position.y < -10) {

@@ -139,16 +139,53 @@
                 z-index: 100;
                 transition: background-color 0.1s ease-in-out;
             }
+
+            #player-ui {
+                position: relative; /* Added to contain all UI elements */
+            }
+
+            #control-hints {
+                position: absolute;
+                bottom: 20px;
+                right: 20px;
+                background: rgba(0,0,0,0.5);
+                color: #fff;
+                padding: 10px;
+                border-radius: 5px;
+                font-size: 14px;
+            }
+
+            #control-hints h3 {
+                margin: 0 0 5px 0;
+            }
+
+            #control-hints ul {
+                margin: 0;
+                padding-left: 20px;
+            }
+
         </style>
     </head>
 
     <body>
         <!-- UI Elements -->
         <div id="crosshair">+</div>
-        <div id="health-display">
-            <div id="health-bar"></div>
+        <div id="player-ui">
+            <div id="health-display">
+                <div id="health-bar"></div>
+            </div>
+            <div id="ammo-display">30 / ∞</div>
+            <div id="control-hints" style="position: absolute; bottom: 20px; right: 20px; background: rgba(0,0,0,0.5); color: #fff; padding: 10px; border-radius: 5px; font-size: 14px;">
+                <h3 style="margin: 0 0 5px 0">Jetbike Controls</h3>
+                <ul style="margin: 0; padding-left: 20px">
+                    <li>W/S: Forward/Back</li>
+                    <li>A/D: Left/Right</li>
+                    <li>Q/E: Up/Down</li>
+                    <li>Shift: Boost</li>
+                    <li>Mouse: Aim</li>
+                </ul>
+            </div>
         </div>
-        <div id="ammo-display">30 / ∞</div>
         <div id="score-ui">
             <div>Level: <span id="level-value">1</span></div>
             <div>Score: <span id="score-value">0</span></div>

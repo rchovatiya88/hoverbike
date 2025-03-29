@@ -3,13 +3,16 @@
 AFRAME.registerComponent('third-person-camera', {
   schema: {
     target: { type: 'selector' },
-    distance: { type: 'number', default: 5 },
-    height: { type: 'number', default: 2 },
+    distance: { type: 'number', default: 6 },
+    height: { type: 'number', default: 2.5 },
     damping: { type: 'number', default: 0.5 },
     rotationDamping: { type: 'number', default: 0.3 },
-    lookAtHeight: { type: 'number', default: 0 },
-    enableCollision: { type: 'boolean', default: true },
-    collisionLayers: { type: 'array', default: [] }
+    followSpeed: { type: 'number', default: 5 },
+    enableRotation: { type: 'boolean', default: true },
+    enableZoom: { type: 'boolean', default: true },
+    minDistance: { type: 'number', default: 2 },
+    maxDistance: { type: 'number', default: 10 },
+    zoomSpeed: { type: 'number', default: 0.5 }
   },
 
   init: function() {
