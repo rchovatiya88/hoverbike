@@ -17,7 +17,8 @@
         <script src="components/weapon-component.js"></script>
         <script src="components/enemy-component.js"></script>
         <script src="components/game-manager.js"></script>
-        <script src="componnents/simple-navmesh-constraint.js"></script>
+        <script src="components/simple-navmesh-constraint.js"></script>
+        <script src="components/model-camera-fix.js"></script>
 
         <style>
             body {
@@ -159,9 +160,8 @@
         <a-scene
             game-manager="enemyCount: 5; level: 1; spawnRadius: 15"
             vr-mode-ui="enabled: false"
-            gltf-model="dracoDecoderPath: https://cdn.jsdelivr.net/npm/three@0.129.0/examples/js/libs/draco/gltf/;"
+            renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true;"
             simple-navmesh-constraint="navmesh:.navmesh;fall:0.5;height:0;exclude:.navmesh-hole;"
-
         >
             <a-assets>
                 <a-asset-item
@@ -182,8 +182,9 @@
             <!-- Player -->
             <a-entity
                 id="player"
-                draco-model="#jetbike-model"
+                gltf-model="#jetbike-model"
                 player-component="speed: 5; health: 100"
+                model-camera-fix="cameraOffset: 0 1.8 -0.5"
                 position="0 5 0"
             >
                 <a-camera

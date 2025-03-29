@@ -5,6 +5,14 @@
  */
 THREE.DRACOLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
 
+// Initialize the Draco loader globally
+const dracoLoader = new THREE.DRACOLoader();
+dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+
+// Configure A-Frame to use Draco for all glTF models
+const GLTFLoader = THREE.GLTFLoader;
+GLTFLoader.prototype.setDRACOLoader(dracoLoader);
+
 AFRAME.registerComponent('draco-model', {
   schema: {
     src: {type: 'asset'},
@@ -17,8 +25,6 @@ AFRAME.registerComponent('draco-model', {
     this.loader = new THREE.GLTFLoader();
     
     // Set up Draco loader
-    const dracoLoader = new THREE.DRACOLoader();
-    dracoLoader.setDecoderPath(this.data.dracoDecoderPath);
     this.loader.setDRACOLoader(dracoLoader);
     
     this.onError = this.onError.bind(this);
