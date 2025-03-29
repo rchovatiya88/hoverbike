@@ -23,6 +23,7 @@
         <script src="components/simple-navmesh-constraint.js"></script>
         <script src="components/model-camera-fix.js"></script>
         <script src="components/third-person-camera.js"></script>
+        <script src="components/position-tracker.js"></script>
 
         <style>
             body {
@@ -186,6 +187,7 @@
             vr-mode-ui="enabled: false"
             renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true;"
             simple-navmesh-constraint="navmesh:.navmesh;fall:0.5;height:0;exclude:.navmesh-hole;"
+            position-tracker="target: #player; showDebug: true"
         >
             <a-assets>
                 <!-- Sound assets removed to fix encoding errors -->
@@ -210,6 +212,46 @@
                 height="50"
                 color="#7BC8A4"
             ></a-plane>
+            
+            <!-- Blue tracking walls -->
+            <a-box
+                id="left-wall"
+                position="-25 2 0"
+                depth="50"
+                height="4"
+                width="1"
+                color="#0077FF"
+                opacity="0.7"
+                class="tracking-wall"
+            ></a-box>
+            
+            <a-box
+                id="right-wall"
+                position="25 2 0"
+                depth="50"
+                height="4"
+                width="1"
+                color="#0077FF"
+                opacity="0.7"
+                class="tracking-wall"
+            ></a-box>
+            
+            <!-- Position markers on walls -->
+            <a-entity id="wall-markers">
+                <!-- Left wall markers -->
+                <a-box position="-25 2 -20" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
+                <a-box position="-25 2 -10" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
+                <a-box position="-25 2 0" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
+                <a-box position="-25 2 10" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
+                <a-box position="-25 2 20" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
+                
+                <!-- Right wall markers -->
+                <a-box position="25 2 -20" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
+                <a-box position="25 2 -10" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
+                <a-box position="25 2 0" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
+                <a-box position="25 2 10" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
+                <a-box position="25 2 20" depth="0.5" height="4" width="1.2" color="#003366"></a-box>
+            </a-entity>
 
             <!-- Player with third-person camera -->
             <a-entity
