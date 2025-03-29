@@ -217,16 +217,16 @@
             <!-- Third-person camera -->
             <a-entity 
                 id="camera-rig" 
-                third-person-camera="target: #player; distance: 6; height: 3; lookAtHeight: 1.5"
-                position="0 0 0" 
+                third-person-camera="target: #player; distance: 8; height: 3.5; lookAtHeight: 1.5"
+                position="0 4 -6" 
                 rotation="0 0 0"
             >
                 <a-camera
                     id="camera"
                     look-controls="reverseMouseDrag: false; touchEnabled: true; pointerLockEnabled: true; magicWindowTrackingEnabled: false"
                     wasd-controls="enabled: false"
-                    position="0 3 6"
-                    rotation="-15 0 0"
+                    position="0 0 0"
+                    rotation="-15 180 0"
                 >
                 </a-camera>
             </a-entity>
