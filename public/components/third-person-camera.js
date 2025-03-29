@@ -3,16 +3,15 @@
 AFRAME.registerComponent('third-person-camera', {
   schema: {
     target: { type: 'selector' },
-    distance: { type: 'number', default: 6 },
-    height: { type: 'number', default: 2.5 },
+    distance: { type: 'number', default: 5 },
+    height: { type: 'number', default: 2 },
+    lookAtHeight: { type: 'number', default: 1 },
+    rotationSpeed: { type: 'number', default: 10 },
+    collisionRadius: { type: 'number', default: 0.35 },
     damping: { type: 'number', default: 0.5 },
-    rotationDamping: { type: 'number', default: 0.3 },
-    followSpeed: { type: 'number', default: 5 },
-    enableRotation: { type: 'boolean', default: true },
-    enableZoom: { type: 'boolean', default: true },
-    minDistance: { type: 'number', default: 2 },
-    maxDistance: { type: 'number', default: 10 },
-    zoomSpeed: { type: 'number', default: 0.5 }
+    heightDamping: { type: 'number', default: 0.3 },
+    minDistance: { type: 'number', default: 3 },
+    maxDistance: { type: 'number', default: 10 }
   },
 
   init: function() {
@@ -53,37 +52,74 @@ AFRAME.registerComponent('third-person-camera', {
     }
   },
 
-  tick: function(time, delta) {
-    if (!this.data.target || !this.data.target.object3D) return;
+  tick: function(time, deltaTime) {
+    if (!this.data.target) return;
 
-    // Get target position and rotation
-    const targetObj = this.data.target.object3D;
-    targetObj.getWorldPosition(this.targetPosition);
+    const deltaSeconds = deltaTime / 1000;
 
-    // Adjust for look height
-    this.targetPosition.y += this.data.lookAtHeight;
+    // Get target position and velocity
+    const targetPosition = this.data.target.object3D.position.clone();
+    const targetVelocity = this.data.target.components['player-component'] ? 
+                          this.data.target.components['player-component'].velocity : 
+                          new THREE.Vector3();
 
-    // Calculate ideal camera position
-    const idealPosition = new THREE.Vector3();
+    // Add look height to target position
+    targetPosition.y += this.data.lookAtHeight;
 
-    // Get the direction the target is facing (assuming -Z is forward)
-    const direction = new THREE.Vector3(0, 0, -1); // -Z is forward in A-Frame
-    direction.applyQuaternion(targetObj.quaternion);
+    // Dynamic camera height based on player velocity
+    const speedFactor = targetVelocity ? Math.min(targetVelocity.length() / 15, 1) : 0;
+    const dynamicHeight = THREE.MathUtils.lerp(this.data.height, this.data.height * 1.3, speedFactor);
 
-    // Position the camera behind the target based on direction
-    idealPosition.copy(this.targetPosition)
-      .add(direction.multiplyScalar(-this.data.distance)) // Negative because we want to be behind
-      .add(new THREE.Vector3(0, this.data.height, 0));
+    // Dynamic camera distance - move further when player is moving fast
+    const dynamicDistance = THREE.MathUtils.lerp(
+      this.data.distance, 
+      this.data.maxDistance, 
+      speedFactor
+    );
 
-    // Apply damping based on delta time for smoother movement
-    const dampingFactor = Math.min(Math.max(this.data.damping * (delta/16.6), 0), 1);
-    this.el.object3D.position.lerp(idealPosition, dampingFactor);
+    // Get camera position in scene
+    const cameraRigPosition = this.el.object3D.position;
 
-    // Create a look target that includes the height offset
-    const lookTarget = this.targetPosition.clone();
+    // Calculate ideal position behind the target
+    const targetRotation = this.data.target.object3D.rotation.y;
 
-    // Make camera look at target 
-    this.el.object3D.lookAt(lookTarget);
+    // Create offset with dynamic distance
+    const idealOffset = new THREE.Vector3(
+      Math.sin(targetRotation) * -dynamicDistance,
+      dynamicHeight,
+      Math.cos(targetRotation) * -dynamicDistance
+    );
+
+    // Apply slight offset based on horizontal velocity for more dynamic feel
+    if (targetVelocity && speedFactor > 0.2) {
+      const horizontalVelocity = new THREE.Vector2(targetVelocity.x, targetVelocity.z);
+      if (horizontalVelocity.length() > 0) {
+        horizontalVelocity.normalize().multiplyScalar(speedFactor * 0.5);
+        idealOffset.x -= horizontalVelocity.x;
+        idealOffset.z -= horizontalVelocity.y;
+      }
+    }
+
+    const idealPosition = targetPosition.clone().add(idealOffset);
+
+    // Apply different damping levels for xyz for natural camera motion
+    const posDamping = this.data.damping * (1 + speedFactor * 0.5); // Faster damping at higher speeds
+    cameraRigPosition.x += (idealPosition.x - cameraRigPosition.x) * posDamping * deltaSeconds * 60;
+    cameraRigPosition.y += (idealPosition.y - cameraRigPosition.y) * this.data.heightDamping * deltaSeconds * 60;
+    cameraRigPosition.z += (idealPosition.z - cameraRigPosition.z) * posDamping * deltaSeconds * 60;
+
+    // Get the camera entity
+    const camera = this.el.querySelector('[camera]') || this.el;
+
+    // Look at target with slight offset based on movement
+    const lookTarget = targetPosition.clone();
+    if (targetVelocity && targetVelocity.length() > 5) {
+      // Add a small anticipation offset in the direction of travel
+      lookTarget.add(targetVelocity.clone().normalize().multiplyScalar(speedFactor * 1.5));
+    }
+
+    // Apply smooth look
+    camera.object3D.lookAt(lookTarget);
   },
 
   handleCollision: function(idealPosition) {

@@ -19,7 +19,8 @@ AFRAME.registerComponent('player-component', {
     hoverFrequency: { type: 'number', default: 2 },
     moveSpeed: {type: 'number', default: 5},
     boostSpeed: {type: 'number', default: 10},
-    boostAcceleration: {type: 'number', default: 50}
+    boostAcceleration: {type: 'number', default: 50},
+    damping: {type: 'number', default: 0.9}
 
   },
 
@@ -148,11 +149,11 @@ AFRAME.registerComponent('player-component', {
     // Handle vertical movement with Q/E keys
     if (event.code === 'KeyQ' && !this.isDead) {
       // Upward movement
-      this.velocity.y = this.data.moveSpeed;
+      this.moveDirection.y = 1;
     }
     if (event.code === 'KeyE' && !this.isDead) {
       // Downward movement
-      this.velocity.y = -this.data.moveSpeed;
+      this.moveDirection.y = -1;
     }
 
     // Toggle boost
@@ -166,7 +167,7 @@ AFRAME.registerComponent('player-component', {
 
     // Reset vertical velocity when Q/E released
     if ((event.code === 'KeyQ' || event.code === 'KeyE') && !this.isDead) {
-      this.velocity.y *= 0.5; // Gentle stop
+      this.moveDirection.y = 0;
     }
 
     // Toggle boost off
@@ -263,131 +264,41 @@ AFRAME.registerComponent('player-component', {
     this.velocity.set(0, 0, 0);
   },
 
-  updateMovement: function(delta) {
-    const deltaSeconds = delta / 1000;
+  updateMovement: function(deltaTime) {
+    const deltaSeconds = deltaTime / 1000;
 
-    // Get move inputs
-    this.moveDirection.set(0, 0, 0);
+    // Reset acceleration each frame
+    this.acceleration.set(0, 0, 0);
 
-    // Forward/backward
-    if (this.keys['w']) this.moveDirection.z -= 1;
-    if (this.keys['s']) this.moveDirection.z += 1;
-
-    // Left/right
-    if (this.keys['a']) this.moveDirection.x -= 1;
-    if (this.keys['d']) this.moveDirection.x += 1;
-
-    // Up/down (Q/E for hover bikes)
-    if (this.keys['q']) this.moveDirection.y += 1;
-    if (this.keys['e']) this.moveDirection.y -= 1;
-
-    // Check if moving at all
-    this.isMoving = (this.moveDirection.x !== 0 || this.moveDirection.z !== 0 || this.moveDirection.y !== 0);
-
-    // Normalize movement vector
+    // Apply movement force based on player input
     if (this.moveDirection.length() > 0) {
-      this.moveDirection.normalize();
-    }
+      // Normalize direction to prevent diagonal movement being faster
+      const normalizedDirection = this.moveDirection.clone().normalize();
 
-    // Apply camera direction to movement (relative to camera)
-    const cameraEl = document.querySelector('[camera]');
-    if (cameraEl) {
-      const cameraObject = cameraEl.object3D;
-      // Use negative Z for proper forward direction
-      const cameraDirection = new THREE.Vector3(0, 0, -1);
-      cameraDirection.applyQuaternion(cameraObject.quaternion);
-      cameraDirection.y = 0; // Keep movement on XZ plane
-      cameraDirection.normalize();
-
-      // Create a rotation matrix based on camera orientation (y-axis only)
+      // Convert direction from local to world space
       const rotationMatrix = new THREE.Matrix4();
-      const eY = new THREE.Euler(0, Math.atan2(cameraDirection.x, cameraDirection.z), 0);
-      rotationMatrix.makeRotationFromEuler(eY);
+      rotationMatrix.makeRotationY(this.el.object3D.rotation.y);
+      normalizedDirection.applyMatrix4(rotationMatrix);
 
-      // Apply rotation to movement direction
-      this.moveDirection.applyMatrix4(rotationMatrix);
+      // Apply movement force with potential boost
+      const currentSpeed = this.isBoosting ? this.data.boostSpeed : this.data.speed;
+
+      // Smoother acceleration for better flying feel
+      const targetAcceleration = normalizedDirection.multiplyScalar(currentSpeed * 12);
+      this.acceleration.lerp(targetAcceleration, 0.15);
     }
-
-    // Calculate acceleration
-    let accelerationValue = this.data.acceleration;
-    let maxVelocity = this.data.maxVelocity;
-
-    if (this.isBoosting) {
-      accelerationValue *= 2;
-      maxVelocity *= 1.5;
-    }
-
-    // Apply acceleration in movement direction
-    if (this.isMoving) {
-      this.acceleration.copy(this.moveDirection).multiplyScalar(accelerationValue);
-    } else {
-      // Apply deceleration when not moving
-      const deceleration = this.data.deceleration;
-      this.acceleration.set(
-        -this.velocity.x * deceleration,
-        -this.velocity.y * deceleration,
-        -this.velocity.z * deceleration
-      );
-    }
-
 
     // Update velocity with acceleration
     this.velocity.add(this.acceleration.clone().multiplyScalar(deltaSeconds));
 
-    // Clamp velocity to max speed
-    if (this.velocity.length() > maxVelocity) {
-      this.velocity.normalize().multiplyScalar(maxVelocity);
-    }
+    // Apply progressive damping - less damping at higher speeds for smoother deceleration
+    const speedFactor = Math.min(this.velocity.length() / 15, 1);
+    const dynamicDamping = THREE.MathUtils.lerp(0.99, this.data.damping, speedFactor);
 
-    // Apply hover effect for jetbike
-    this.applyHoverEffect(deltaSeconds);
-
-    // Move the player
-    const movement = this.velocity.clone().multiplyScalar(deltaSeconds);
-    this.el.object3D.position.add(movement);
-
-    // Face movement direction if moving
-    if (this.isMoving && (this.moveDirection.x !== 0 || this.moveDirection.z !== 0)) {
-      // Gradually rotate to match movement direction
-      const targetRotation = Math.atan2(this.moveDirection.x, this.moveDirection.z);
-      const currentRotation = this.el.object3D.rotation.y;
-
-      // Smoothly interpolate rotation
-      const rotationStep = this.data.rotationSpeed * deltaSeconds;
-      let newRotation = currentRotation;
-
-      // Calculate the shortest rotation path
-      const diff = targetRotation - currentRotation;
-      const shortestDiff = Math.atan2(Math.sin(diff), Math.cos(diff));
-
-      newRotation += Math.sign(shortestDiff) * Math.min(Math.abs(shortestDiff), rotationStep);
-
-      // Apply rotation
-      this.el.object3D.rotation.y = newRotation;
-    }
-  },
-
-  applyHoverEffect: function(deltaSeconds) {
-    // Simple hover effect for jetbike
-    this.hoverPhase += this.data.hoverFrequency * deltaSeconds;
-
-    // Sinusoidal hover motion
-    const hoverOffset = Math.sin(this.hoverPhase) * this.data.hoverAmplitude;
-
-    // Apply hover to the Y position with minimum height
-    this.el.object3D.position.y = Math.max(this.data.hoverHeight + hoverOffset, 2.5); // Increased minimum height
-
-    // Slight roll/tilt based on movement
-    if (this.moveDirection.x !== 0) {
-      const targetTilt = this.moveDirection.x * 0.2; // Max tilt in radians
-      const currentTilt = this.el.object3D.rotation.z;
-
-      // Smooth tilt transition
-      this.el.object3D.rotation.z = currentTilt + (targetTilt - currentTilt) * 0.1;
-    } else {
-      // Return to level when not moving sideways
-      this.el.object3D.rotation.z *= 0.9;
-    }
+    // Apply damping to slow down gradually when not moving
+    this.velocity.x *= dynamicDamping;
+    this.velocity.z *= dynamicDamping;
+    this.velocity.y *= dynamicDamping; // Apply damping to vertical movement as well
   },
 
   checkGround: function() {
