@@ -819,7 +819,7 @@ function createParticles(scene, position, color, count, lifespan) {
       if (elapsed >= lifespan) {
         scene.removeChild(particle);
         particle.removeEventListener('tick', tick);
-      }      }
+      }
     };
 
     particle.addEventListener('tick', tick);
