@@ -39,15 +39,19 @@ if (!AFRAME.components['weapon-component']) {
           const weaponGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.3);
           const weaponMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
           this.weaponMesh = new THREE.Mesh(weaponGeometry, weaponMaterial);
+          
+          // Create a weapon group to hold the weapon mesh
+          this.weaponGroup = new THREE.Group();
+          this.weaponGroup.add(this.weaponMesh);
 
           // Ensure it's a valid THREE.Object3D before setting
-          if (this.weaponMesh instanceof THREE.Object3D) {
+          if (this.weaponGroup instanceof THREE.Object3D) {
               // Default visible state
-              this.el.setObject3D('weapon', this.weaponMesh);
+              this.el.setObject3D('weapon', this.weaponGroup);
 
               // For third-person mode, we only want to see weapon effects
               if (this.el.sceneEl.systems.camera && document.getElementById('camera-rig')) {
-                  this.weaponMesh.visible = false;
+                  this.weaponGroup.visible = false;
               }
           } else {
               console.error('Failed to create valid THREE.Object3D for weapon');
@@ -69,7 +73,11 @@ if (!AFRAME.components['weapon-component']) {
       this.muzzleFlash = new THREE.Mesh(flashGeometry, flashMaterial);
       this.muzzleFlash.position.set(0, 0, -0.55);
       this.muzzleFlash.rotation.y = Math.PI / 2;
-      this.weaponGroup.add(this.muzzleFlash);
+      
+      // Add muzzle flash to weapon group
+      if (this.weaponGroup) {
+        this.weaponGroup.add(this.muzzleFlash);
+      }
     },
 
     setupSound: function () {
@@ -296,7 +304,20 @@ if (!AFRAME.components['weapon-component']) {
       document.removeEventListener("touchend", this.onMouseUpHandler);
 
       // Remove weapon model
-      this.el.removeObject3D("weapon");
+      if (this.el) {
+        this.el.removeObject3D("weapon");
+      }
+      
+      // Clean up THREE objects
+      if (this.weaponMesh) {
+        if (this.weaponMesh.geometry) this.weaponMesh.geometry.dispose();
+        if (this.weaponMesh.material) this.weaponMesh.material.dispose();
+      }
+      
+      if (this.muzzleFlash) {
+        if (this.muzzleFlash.geometry) this.muzzleFlash.geometry.dispose();
+        if (this.muzzleFlash.material) this.muzzleFlash.material.dispose();
+      }
     }
   });
 }
