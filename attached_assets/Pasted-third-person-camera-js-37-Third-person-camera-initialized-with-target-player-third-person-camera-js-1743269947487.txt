@@ -1,0 +1,442 @@
+third-person-camera.js:37 Third-person camera initialized with target: player
+third-person-camera.js:52 Camera target changed to: player
+f38e87bd-96dd-4756-bd55-b58dc441503e-00-3eyljjtrnhsv4.riker.replit.dev/:1 Unchecked runtime.lastError: A listener indicated an asynchronous response by returning true, but the message channel closed before a response was receivedUnderstand this errorAI
+sound.js:85 EncodingError: Unable to decode audio data
+overrideMethod @ hook.js:608
+o @ three.core.js:30960
+Promise.catch
+(anonymous) @ three.core.js:30942
+(anonymous) @ three.core.js:27417
+Promise.then
+load @ three.core.js:27405
+load @ three.core.js:30929
+update @ sound.js:85
+initComponent @ component.js:263
+updateProperties @ component.js:239
+lb @ component.js:107
+n @ component.js:663
+initComponent @ a-entity.js:302
+updateComponent @ a-entity.js:458
+setAttribute @ a-entity.js:674
+setupSound @ weapon-component.js:78
+init @ weapon-component.js:20
+initComponent @ component.js:253
+updateProperties @ component.js:239
+lb @ component.js:107
+n @ component.js:663
+initComponent @ a-entity.js:302
+updateComponent @ a-entity.js:458
+updateComponents @ a-entity.js:429
+(anonymous) @ a-entity.js:231
+(anonymous) @ a-node.js:145
+Promise.then
+load @ a-node.js:133
+load @ a-entity.js:227
+(anonymous) @ a-entity.js:85
+emit @ a-node.js:306
+(anonymous) @ a-node.js:151
+Promise.then
+load @ a-node.js:133
+load @ a-assets.js:102
+(anonymous) @ a-assets.js:80
+Promise.then
+doConnectedCallback @ a-assets.js:77
+connectedCallback @ a-node.js:42
+(anonymous) @ readyState.js:31
+setTimeout
+Ab @ readyState.js:30
+t @ readyState.js:20Understand this errorAI
+sound.js:85 EncodingError: Unable to decode audio data
+overrideMethod @ hook.js:608
+o @ three.core.js:30960
+Promise.catch
+(anonymous) @ three.core.js:30942
+(anonymous) @ three.core.js:27417
+Promise.then
+load @ three.core.js:27405
+load @ three.core.js:30929
+update @ sound.js:85
+initComponent @ component.js:263
+updateProperties @ component.js:239
+lb @ component.js:107
+n @ component.js:663
+initComponent @ a-entity.js:302
+updateComponent @ a-entity.js:458
+setAttribute @ a-entity.js:674
+setupSound @ weapon-component.js:87
+init @ weapon-component.js:20
+initComponent @ component.js:253
+updateProperties @ component.js:239
+lb @ component.js:107
+n @ component.js:663
+initComponent @ a-entity.js:302
+updateComponent @ a-entity.js:458
+updateComponents @ a-entity.js:429
+(anonymous) @ a-entity.js:231
+(anonymous) @ a-node.js:145
+Promise.then
+load @ a-node.js:133
+load @ a-entity.js:227
+(anonymous) @ a-entity.js:85
+emit @ a-node.js:306
+(anonymous) @ a-node.js:151
+Promise.then
+load @ a-node.js:133
+load @ a-assets.js:102
+(anonymous) @ a-assets.js:80
+Promise.then
+doConnectedCallback @ a-assets.js:77
+connectedCallback @ a-node.js:42
+(anonymous) @ readyState.js:31
+setTimeout
+Ab @ readyState.js:30
+t @ readyState.js:20Understand this errorAI
+f38e87bd-96dd-4756-bd55-b58dc441503e-00-3eyljjtrnhsv4.riker.replit.dev/:1 Unchecked runtime.lastError: The message port closed before a response was received.Understand this errorAI
+f38e87bd-96dd-4756-bd55-b58dc441503e-00-3eyljjtrnhsv4.riker.replit.dev/:1 Unchecked runtime.lastError: The message port closed before a response was received.Understand this errorAI
+weapon-component.js:154 Firing weapon - Direction: Zt {x: 0, y: -0.24253562503633308, z: 0.9701425001453319}
+weapon-component.js:187 Found 0 potential enemy targets and 5 total targets
+weapon-component.js:197 Hit object: {metadata: {…}, geometries: Array(1), materials: Array(1), textures: Array(2), images: Array(2), …}
+weapon-component.js:236 Found entity via object3D.el reference
+weapon-component.js:258 Hit player (no damage): player Distance: 5.70
+game-manager.js:33 Game started
+enemy-component.js:307 Error setting up Yuka AI: TypeError: Cannot read properties of undefined (reading 'add')
+    at n.setupYukaAI (enemy-component.js:304:64)
+    at n.init (enemy-component.js:41:14)
+    at n.initComponent (component.js:253:10)
+    at n.updateProperties (component.js:239:12)
+    at Sb.updateComponent (a-entity.js:453:17)
+    at Sb.updateComponents (a-entity.js:429:12)
+    at a-entity.js:231:12
+    at a-node.js:145:17
+overrideMethod @ hook.js:608
+setupYukaAI @ enemy-component.js:307
+init @ enemy-component.js:41
+initComponent @ component.js:253
+updateProperties @ component.js:239
+updateComponent @ a-entity.js:453
+updateComponents @ a-entity.js:429
+(anonymous) @ a-entity.js:231
+(anonymous) @ a-node.js:145
+Promise.then
+load @ a-node.js:133
+load @ a-entity.js:227
+doConnectedCallback @ a-entity.js:88
+connectedCallback @ a-node.js:42
+spawnEnemies @ game-manager.js:67
+startGame @ game-manager.js:35
+(anonymous) @ (index):255Understand this errorAI
+enemy-component.js:51 Error initializing enemy component: TypeError: gameManager.components.game-manager.registerEnemy is not a function
+    at n.init (enemy-component.js:45:50)
+    at n.initComponent (component.js:253:10)
+    at n.updateProperties (component.js:239:12)
+    at Sb.updateComponent (a-entity.js:453:17)
+    at Sb.updateComponents (a-entity.js:429:12)
+    at a-entity.js:231:12
+    at a-node.js:145:17
+overrideMethod @ hook.js:608
+init @ enemy-component.js:51
+initComponent @ component.js:253
+updateProperties @ component.js:239
+updateComponent @ a-entity.js:453
+updateComponents @ a-entity.js:429
+(anonymous) @ a-entity.js:231
+(anonymous) @ a-node.js:145
+Promise.then
+load @ a-node.js:133
+load @ a-entity.js:227
+doConnectedCallback @ a-entity.js:88
+connectedCallback @ a-node.js:42
+spawnEnemies @ game-manager.js:67
+startGame @ game-manager.js:35
+(anonymous) @ (index):255Understand this errorAI
+enemy-component.js:307 Error setting up Yuka AI: TypeError: Cannot read properties of undefined (reading 'add')
+    at n.setupYukaAI (enemy-component.js:304:64)
+    at n.init (enemy-component.js:41:14)
+    at n.initComponent (component.js:253:10)
+    at n.updateProperties (component.js:239:12)
+    at Sb.updateComponent (a-entity.js:453:17)
+    at Sb.updateComponents (a-entity.js:429:12)
+    at a-entity.js:231:12
+    at a-node.js:145:17
+overrideMethod @ hook.js:608
+setupYukaAI @ enemy-component.js:307
+init @ enemy-component.js:41
+initComponent @ component.js:253
+updateProperties @ component.js:239
+updateComponent @ a-entity.js:453
+updateComponents @ a-entity.js:429
+(anonymous) @ a-entity.js:231
+(anonymous) @ a-node.js:145
+Promise.then
+load @ a-node.js:133
+load @ a-entity.js:227
+doConnectedCallback @ a-entity.js:88
+connectedCallback @ a-node.js:42
+spawnEnemies @ game-manager.js:67
+startGame @ game-manager.js:35
+(anonymous) @ (index):255Understand this errorAI
+enemy-component.js:51 Error initializing enemy component: TypeError: gameManager.components.game-manager.registerEnemy is not a function
+    at n.init (enemy-component.js:45:50)
+    at n.initComponent (component.js:253:10)
+    at n.updateProperties (component.js:239:12)
+    at Sb.updateComponent (a-entity.js:453:17)
+    at Sb.updateComponents (a-entity.js:429:12)
+    at a-entity.js:231:12
+    at a-node.js:145:17
+overrideMethod @ hook.js:608
+init @ enemy-component.js:51
+initComponent @ component.js:253
+updateProperties @ component.js:239
+updateComponent @ a-entity.js:453
+updateComponents @ a-entity.js:429
+(anonymous) @ a-entity.js:231
+(anonymous) @ a-node.js:145
+Promise.then
+load @ a-node.js:133
+load @ a-entity.js:227
+doConnectedCallback @ a-entity.js:88
+connectedCallback @ a-node.js:42
+spawnEnemies @ game-manager.js:67
+startGame @ game-manager.js:35
+(anonymous) @ (index):255Understand this errorAI
+enemy-component.js:307 Error setting up Yuka AI: TypeError: Cannot read properties of undefined (reading 'add')
+    at n.setupYukaAI (enemy-component.js:304:64)
+    at n.init (enemy-component.js:41:14)
+    at n.initComponent (component.js:253:10)
+    at n.updateProperties (component.js:239:12)
+    at Sb.updateComponent (a-entity.js:453:17)
+    at Sb.updateComponents (a-entity.js:429:12)
+    at a-entity.js:231:12
+    at a-node.js:145:17
+overrideMethod @ hook.js:608
+setupYukaAI @ enemy-component.js:307
+init @ enemy-component.js:41
+initComponent @ component.js:253
+updateProperties @ component.js:239
+updateComponent @ a-entity.js:453
+updateComponents @ a-entity.js:429
+(anonymous) @ a-entity.js:231
+(anonymous) @ a-node.js:145
+Promise.then
+load @ a-node.js:133
+load @ a-entity.js:227
+doConnectedCallback @ a-entity.js:88
+connectedCallback @ a-node.js:42
+spawnEnemies @ game-manager.js:67
+startGame @ game-manager.js:35
+(anonymous) @ (index):255Understand this errorAI
+enemy-component.js:51 Error initializing enemy component: TypeError: gameManager.components.game-manager.registerEnemy is not a function
+    at n.init (enemy-component.js:45:50)
+    at n.initComponent (component.js:253:10)
+    at n.updateProperties (component.js:239:12)
+    at Sb.updateComponent (a-entity.js:453:17)
+    at Sb.updateComponents (a-entity.js:429:12)
+    at a-entity.js:231:12
+    at a-node.js:145:17
+overrideMethod @ hook.js:608
+init @ enemy-component.js:51
+initComponent @ component.js:253
+updateProperties @ component.js:239
+updateComponent @ a-entity.js:453
+updateComponents @ a-entity.js:429
+(anonymous) @ a-entity.js:231
+(anonymous) @ a-node.js:145
+Promise.then
+load @ a-node.js:133
+load @ a-entity.js:227
+doConnectedCallback @ a-entity.js:88
+connectedCallback @ a-node.js:42
+spawnEnemies @ game-manager.js:67
+startGame @ game-manager.js:35
+(anonymous) @ (index):255Understand this errorAI
+enemy-component.js:307 Error setting up Yuka AI: TypeError: Cannot read properties of undefined (reading 'add')
+    at n.setupYukaAI (enemy-component.js:304:64)
+    at n.init (enemy-component.js:41:14)
+    at n.initComponent (component.js:253:10)
+    at n.updateProperties (component.js:239:12)
+    at Sb.updateComponent (a-entity.js:453:17)
+    at Sb.updateComponents (a-entity.js:429:12)
+    at a-entity.js:231:12
+    at a-node.js:145:17
+overrideMethod @ hook.js:608
+setupYukaAI @ enemy-component.js:307
+init @ enemy-component.js:41
+initComponent @ component.js:253
+updateProperties @ component.js:239
+updateComponent @ a-entity.js:453
+updateComponents @ a-entity.js:429
+(anonymous) @ a-entity.js:231
+(anonymous) @ a-node.js:145
+Promise.then
+load @ a-node.js:133
+load @ a-entity.js:227
+doConnectedCallback @ a-entity.js:88
+connectedCallback @ a-node.js:42
+spawnEnemies @ game-manager.js:67
+startGame @ game-manager.js:35
+(anonymous) @ (index):255Understand this errorAI
+enemy-component.js:51 Error initializing enemy component: TypeError: gameManager.components.game-manager.registerEnemy is not a function
+    at n.init (enemy-component.js:45:50)
+    at n.initComponent (component.js:253:10)
+    at n.updateProperties (component.js:239:12)
+    at Sb.updateComponent (a-entity.js:453:17)
+    at Sb.updateComponents (a-entity.js:429:12)
+    at a-entity.js:231:12
+    at a-node.js:145:17
+overrideMethod @ hook.js:608
+init @ enemy-component.js:51
+initComponent @ component.js:253
+updateProperties @ component.js:239
+updateComponent @ a-entity.js:453
+updateComponents @ a-entity.js:429
+(anonymous) @ a-entity.js:231
+(anonymous) @ a-node.js:145
+Promise.then
+load @ a-node.js:133
+load @ a-entity.js:227
+doConnectedCallback @ a-entity.js:88
+connectedCallback @ a-node.js:42
+spawnEnemies @ game-manager.js:67
+startGame @ game-manager.js:35
+(anonymous) @ (index):255Understand this errorAI
+enemy-component.js:307 Error setting up Yuka AI: TypeError: Cannot read properties of undefined (reading 'add')
+    at n.setupYukaAI (enemy-component.js:304:64)
+    at n.init (enemy-component.js:41:14)
+    at n.initComponent (component.js:253:10)
+    at n.updateProperties (component.js:239:12)
+    at Sb.updateComponent (a-entity.js:453:17)
+    at Sb.updateComponents (a-entity.js:429:12)
+    at a-entity.js:231:12
+    at a-node.js:145:17
+overrideMethod @ hook.js:608
+setupYukaAI @ enemy-component.js:307
+init @ enemy-component.js:41
+initComponent @ component.js:253
+updateProperties @ component.js:239
+updateComponent @ a-entity.js:453
+updateComponents @ a-entity.js:429
+(anonymous) @ a-entity.js:231
+(anonymous) @ a-node.js:145
+Promise.then
+load @ a-node.js:133
+load @ a-entity.js:227
+doConnectedCallback @ a-entity.js:88
+connectedCallback @ a-node.js:42
+spawnEnemies @ game-manager.js:67
+startGame @ game-manager.js:35
+(anonymous) @ (index):255Understand this errorAI
+enemy-component.js:51 Error initializing enemy component: TypeError: gameManager.components.game-manager.registerEnemy is not a function
+    at n.init (enemy-component.js:45:50)
+    at n.initComponent (component.js:253:10)
+    at n.updateProperties (component.js:239:12)
+    at Sb.updateComponent (a-entity.js:453:17)
+    at Sb.updateComponents (a-entity.js:429:12)
+    at a-entity.js:231:12
+    at a-node.js:145:17
+overrideMethod @ hook.js:608
+init @ enemy-component.js:51
+initComponent @ component.js:253
+updateProperties @ component.js:239
+updateComponent @ a-entity.js:453
+updateComponents @ a-entity.js:429
+(anonymous) @ a-entity.js:231
+(anonymous) @ a-node.js:145
+Promise.then
+load @ a-node.js:133
+load @ a-entity.js:227
+doConnectedCallback @ a-entity.js:88
+connectedCallback @ a-node.js:42
+spawnEnemies @ game-manager.js:67
+startGame @ game-manager.js:35
+(anonymous) @ (index):255Understand this errorAI
+5enemy-component.js:622 Error updating hitbox: TypeError: Cannot read properties of undefined (reading 'min')
+    at n.updateHitbox (enemy-component.js:599:21)
+    at n.tick (enemy-component.js:575:14)
+    at Ob.callComponentBehaviors (a-scene.js:688:30)
+    at Ob.tick (a-scene.js:617:10)
+    at Ob.render (a-scene.js:659:32)
+    at three.module.js:15877:36
+    at r (three.module.js:18:3)
+overrideMethod @ hook.js:608
+updateHitbox @ enemy-component.js:622
+tick @ enemy-component.js:575
+callComponentBehaviors @ a-scene.js:688
+tick @ a-scene.js:617
+render @ a-scene.js:659
+(anonymous) @ three.module.js:15877
+r @ three.module.js:18
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20
+requestAnimationFrame
+r @ three.module.js:20Understand this errorAI
+three.core.js:31264 Uncaught TypeError: Failed to execute 'linearRampToValueAtTime' on 'AudioParam': The provided float value is non-finite.
+    at Ud.updateMatrixWorld (three.core.js:31264:23)
+    at Ba.updateMatrixWorld (three.core.js:7872:10)
+    at Ba.updateMatrixWorld (three.core.js:12620:9)
+    at Pa.updateMatrixWorld (three.core.js:7872:10)
+    at Pa.updateMatrixWorld (three.core.js:7872:10)
+    at ka.updateMatrixWorld (three.core.js:7872:10)
+    at Om.render (three.module.js:15925:54)
+    at Ob.render (a-scene.js:667:14)
+    at three.module.js:15877:36
+    at r (three.module.js:18:3)
