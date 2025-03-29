@@ -601,6 +601,13 @@ if (!AFRAME.components['enemy-component']) {
         this.playerEntity = document.getElementById('player');
         if (!this.playerEntity) return;
       }
+      
+      // Ensure vehicle has valid userData and target
+      if (this.vehicle && (!this.vehicle.userData || !this.vehicle.userData.target)) {
+        this.vehicle.userData = this.vehicle.userData || {};
+        this.vehicle.userData.target = this.playerEntity;
+        this.vehicle.userData.el = this.el;
+      }
 
       // Simple AI if YUKA isn't working - move toward player
       if (!this.entityManager || !this.vehicle) {
@@ -684,11 +691,10 @@ if (!AFRAME.components['enemy-component']) {
 
       if (this.vehicleSound) {
         try {
-          // Audio functionality removed to prevent encoding errors
-          if (this.audioEnabled === false) {
-            // Skip audio processing entirely
-            return;
-          }
+          // Completely disable audio to prevent errors
+          this.audioEnabled = false;
+          // Skip all audio processing
+          return;
         } catch (error) {
           console.error('Error updating enemy audio:', error);
         }
