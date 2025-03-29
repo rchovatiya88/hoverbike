@@ -51,23 +51,6 @@ AFRAME.registerComponent('player-component', {
   },
 
   createSounds: function () {
-    /*
-    // Jetbike engine sound
-    const engineSound = document.createElement('a-sound');
-    engineSound.setAttribute('src', 'url(https://cdn.glitch.global/a0f42b6b-5748-4de7-8b7f-f072c068f79e/engine-loop.mp3)');
-    engineSound.setAttribute('loop', 'true');
-    engineSound.setAttribute('volume', '0.5');
-    this.el.appendChild(engineSound);
-
-    // Damage sound
-    const damageSound = document.createElement('a-sound');
-    damageSound.setAttribute('src', 'url(https://cdn.glitch.global/a0f42b6b-5748-4de7-8b7f-f072c068f79e/damage.mp3)');
-    damageSound.setAttribute('volume', '1.0');
-    this.el.appendChild(damageSound);
-
-    this.engineSound = engineSound;
-    this.damageSound = damageSound;
-    */
   },
 
   onKeyDown: function (event) {
@@ -93,7 +76,7 @@ AFRAME.registerComponent('player-component', {
     }, 100);
 
     // Play damage sound
-    /*this.damageSound.components.sound.playSound();*/
+    console.log('Player damage - sound disabled');
 
     // Update health bar
     this.updateHealthBar();
@@ -213,13 +196,6 @@ AFRAME.registerComponent('player-component', {
 
     // Apply vertical movement directly in world space
     this.el.object3D.position.y += velocity.y * deltaSeconds;
-
-    // Update engine sound volume based on velocity
-    /*if (this.engineSound) {
-      const speed = Math.max(Math.abs(velocity.z), Math.abs(velocity.y));
-      const volume = THREE.MathUtils.mapLinear(speed, 0, this.data.speed * 2, 0.1, 0.8);
-      this.engineSound.setAttribute('volume', volume);
-    }*/
   }
 });
 

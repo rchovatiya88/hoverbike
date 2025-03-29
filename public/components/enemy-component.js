@@ -129,7 +129,6 @@ if (!AFRAME.components['enemy-component']) {
             this.lastEnemyShot = now;
             this.createEnemyShootEffect(enemyPos, direction);
             // Sound disabled
-            // this.playEnemyShootSound();
 
             if (this.playerEntity.components['player-component']) {
               this.playerEntity.components['player-component'].takeDamage(this.data.weaponDamage);
@@ -177,30 +176,8 @@ if (!AFRAME.components['enemy-component']) {
           line.material.dispose();
         }, 100);
 
-        //this.playEnemyShootSound();
       } catch (error) {
         console.error('Error creating enemy shoot effect:', error);
-      }
-    },
-    playEnemyShootSound: function() {
-      try {
-        const context = new(window.AudioContext || window.webkitAudioContext)();
-        const oscillator = context.createOscillator();
-        const gainNode = context.createGain();
-
-        oscillator.type = 'square';
-        oscillator.frequency.setValueAtTime(300, context.currentTime);
-
-        gainNode.gain.setValueAtTime(0.05, context.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.1);
-
-        oscillator.connect(gainNode);
-        gainNode.connect(context.destination);
-
-        oscillator.start();
-        oscillator.stop(context.currentTime + 0.1);
-      } catch (error) {
-        console.error('Error playing enemy shoot sound:', error);
       }
     },
     updateAI: function(dt) {

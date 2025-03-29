@@ -111,6 +111,11 @@ if (!AFRAME.components['game-manager']) {
       this.levelValueEl.textContent = this.data.level;
       this.scoreValueEl.textContent = this.score;
       this.enemiesValueEl.textContent = this.enemies.length;
+    },
+    // Sound playback functionality removed to fix encoding errors
+    playSound: function (soundName) {
+      console.log(`Sound playback disabled: ${soundName}`);
+      // Sound functionality removed to prevent encoding errors
     }
   });
 }
