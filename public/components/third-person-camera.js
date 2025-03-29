@@ -63,37 +63,33 @@ AFRAME.registerComponent('third-person-camera', {
     if (!this.data.target || !this.cameraEl) return;
     
     const dt = delta / 1000;
+    const smoothing = Math.min(this.data.smoothing * dt, 1.0);
     
-    // Get target position and add height offset
-    this.data.target.object3D.getWorldPosition(this.targetPosition);
-    this.lookTarget.copy(this.targetPosition);
-    this.lookTarget.y += this.data.lookAtHeight;
-    
-    // Get target rotation (just the Y component for horizontal rotation)
-    this.targetRotation.y = this.data.target.object3D.rotation.y;
-    
-    // Calculate camera position based on target position and rotation
+    // Cache frequently accessed properties
     const distance = this.data.distance;
     const height = this.data.height;
     
-    // Position the camera behind and above the target
+    // Get target position and rotation
+    this.data.target.object3D.getWorldPosition(this.targetPosition);
+    this.targetRotation.y = this.data.target.object3D.rotation.y;
+    
+    // Calculate look target with height offset
+    this.lookTarget.copy(this.targetPosition);
+    this.lookTarget.y += this.data.lookAtHeight;
+    
+    // Calculate ideal camera position relative to target
+    // Use sin/cos for circular orbit around target
     this.cameraPosition.x = this.targetPosition.x - Math.sin(this.targetRotation.y) * distance;
     this.cameraPosition.z = this.targetPosition.z - Math.cos(this.targetRotation.y) * distance;
     this.cameraPosition.y = this.targetPosition.y + height;
     
-    // Apply smoothing - lerp between current position and desired position
-    const smoothing = Math.min(this.data.smoothing * dt, 1.0);
-    
     // Update rig position with smoothing
     this.el.object3D.position.lerp(this.targetPosition, smoothing);
     
-    // Update camera position relative to the rig
-    const cameraOffset = new THREE.Vector3(
-      this.cameraPosition.x - this.targetPosition.x,
-      this.cameraPosition.y - this.targetPosition.y,
-      this.cameraPosition.z - this.targetPosition.z
-    );
+    // Calculate camera offset from target (relative to rig)
+    const cameraOffset = new THREE.Vector3().subVectors(this.cameraPosition, this.targetPosition);
     
+    // Apply the offset to camera with smoothing
     this.cameraEl.object3D.position.lerp(cameraOffset, smoothing);
     
     // Make camera look at the target

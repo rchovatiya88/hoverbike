@@ -37,74 +37,66 @@ if (!AFRAME.components['weapon-component']) {
     },
 
     createWeaponModel: function() {
-      try {
-        // Create a THREE.Group for the weapon
-        this.weaponGroup = new THREE.Group();
-        this.el.object3D.add(this.weaponGroup);
-        
-        // Create a simple weapon model using Three.js objects
-        const barrelGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.5);
-        const barrelMaterial = new THREE.MeshStandardMaterial({color: 0x333333});
-        const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
-        barrel.position.set(0, 0, -0.25);
-        
-        const bodyGeometry = new THREE.BoxGeometry(0.12, 0.15, 0.2);
-        const bodyMaterial = new THREE.MeshStandardMaterial({color: 0x666666});
-        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-        body.position.set(0, -0.05, 0);
-        
-        this.weaponGroup.add(barrel);
-        this.weaponGroup.add(body);
-        this.weaponGroup.position.set(0.4, -0.2, -0.5);
-        
-        // Create a-entity for A-Frame integration
-        const weaponEntity = document.createElement('a-entity');
+    try {
+      // Create a THREE.Group for the weapon
+      this.weaponGroup = new THREE.Group();
+      this.el.object3D.add(this.weaponGroup);
 
-        const weaponBarrel = document.createElement('a-box');
-        weaponBarrel.setAttribute('color', '#333333');
-        weaponBarrel.setAttribute('height', '0.1');
-        weaponBarrel.setAttribute('width', '0.1');
-        weaponBarrel.setAttribute('depth', '0.5');
-        weaponBarrel.setAttribute('position', '0 0 -0.25');
+      // Create weapon parts with separate method for better organization
+      this.createWeaponParts();
 
-        const weaponBody = document.createElement('a-box');
-        weaponBody.setAttribute('color', '#666666');
-        weaponBody.setAttribute('height', '0.15');
-        weaponBody.setAttribute('width', '0.12');
-        weaponBody.setAttribute('depth', '0.2');
-        weaponBody.setAttribute('position', '0 -0.05 0');
+      // Position the complete weapon group
+      this.weaponGroup.position.set(0.4, -0.2, -0.5);
 
-        // We no longer need to append these entities since we're using THREE.js objects
-        // But we'll keep the weaponEntity reference for compatibility
-        
-        this.el.appendChild(weaponEntity);
+      // Create a simple reference entity for A-Frame compatibility
+      const weaponEntity = document.createElement('a-entity');
+      this.el.appendChild(weaponEntity);
+      this.weaponEntity = weaponEntity;
+    } catch (error) {
+      console.error('Error creating weapon model:', error);
+      this.createFallbackWeapon();
+    }
+  },
 
-        // Store reference to weapon entity
-        this.weaponEntity = weaponEntity;
-      } catch (error) {
-        console.error('Error creating weapon model:', error);
-        // Create a fallback minimal weapon if error occurs
-        try {
-          const fallbackWeapon = document.createElement('a-box');
-          fallbackWeapon.setAttribute('color', '#FF5733');
-          fallbackWeapon.setAttribute('height', '0.1');
-          fallbackWeapon.setAttribute('width', '0.1');
-          fallbackWeapon.setAttribute('depth', '0.3');
-          fallbackWeapon.setAttribute('position', '0.4 -0.2 -0.5');
-          this.el.appendChild(fallbackWeapon);
-          this.weaponEntity = fallbackWeapon;
-        } catch (fallbackError) {
-          console.error('Could not create fallback weapon model:', fallbackError);
-        }
-      }
-    },
+  createWeaponParts: function() {
+    // Create barrel
+    const barrelGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.5);
+    const barrelMaterial = new THREE.MeshStandardMaterial({color: 0x333333});
+    const barrel = new THREE.Mesh(barrelGeometry, barrelMaterial);
+    barrel.position.set(0, 0, -0.25);
+
+    // Create body
+    const bodyGeometry = new THREE.BoxGeometry(0.12, 0.15, 0.2);
+    const bodyMaterial = new THREE.MeshStandardMaterial({color: 0x666666});
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.set(0, -0.05, 0);
+
+    // Add parts to weapon group
+    this.weaponGroup.add(barrel);
+    this.weaponGroup.add(body);
+  },
+
+  createFallbackWeapon: function() {
+    try {
+      const fallbackWeapon = document.createElement('a-box');
+      fallbackWeapon.setAttribute('color', '#FF5733');
+      fallbackWeapon.setAttribute('height', '0.1');
+      fallbackWeapon.setAttribute('width', '0.1');
+      fallbackWeapon.setAttribute('depth', '0.3');
+      fallbackWeapon.setAttribute('position', '0.4 -0.2 -0.5');
+      this.el.appendChild(fallbackWeapon);
+      this.weaponEntity = fallbackWeapon;
+    } catch (fallbackError) {
+      console.error('Could not create fallback weapon model:', fallbackError);
+    }
+  },
 
     createMuzzleFlash: function () {
       if (!this.weaponGroup) {
         console.warn('Cannot create muzzle flash: weapon group not initialized');
         return;
       }
-      
+
       // Create muzzle flash
       const flashGeometry = new THREE.PlaneGeometry(0.2, 0.2);
       const flashMaterial = new THREE.MeshBasicMaterial({
@@ -339,29 +331,31 @@ if (!AFRAME.components['weapon-component']) {
     },
 
     showMuzzleFlash: function () {
-      try {
-        if (!this.muzzleFlash) {
-          console.warn('Muzzle flash not initialized');
-          return;
-        }
-
-        // Original muzzle flash code for regular weapons
-        this.muzzleFlash.visible = true;
-
-        // Schedule to hide the muzzle flash
-        if (this.muzzleFlashTimeout) {
-          clearTimeout(this.muzzleFlashTimeout);
-        }
-
-        this.muzzleFlashTimeout = setTimeout(() => {
-          if (this.muzzleFlash) {
-            this.muzzleFlash.visible = false;
-          }
-        }, 50);
-      } catch (error) {
-        console.error('Error showing muzzle flash:', error);
+    try {
+      if (!this.muzzleFlash) {
+        // Create muzzle flash if it doesn't exist yet
+        this.createMuzzleFlash();
+        if (!this.muzzleFlash) return;
       }
-    },
+
+      // Make muzzle flash visible
+      this.muzzleFlash.visible = true;
+
+      // Clear any existing timeout to prevent issues
+      if (this.muzzleFlashTimeout) {
+        clearTimeout(this.muzzleFlashTimeout);
+      }
+
+      // Hide the muzzle flash after a short delay
+      this.muzzleFlashTimeout = setTimeout(() => {
+        if (this.muzzleFlash) {
+          this.muzzleFlash.visible = false;
+        }
+      }, 50);
+    } catch (error) {
+      console.error('Error showing muzzle flash:', error);
+    }
+  },
 
     tick: function (time, delta) {
       // Handle automatic firing
