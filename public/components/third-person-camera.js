@@ -3,7 +3,7 @@
 AFRAME.registerComponent('third-person-camera', {
   schema: {
     target: { type: 'selector' },
-    distance: { type: 'number', default: 8 },
+    distance: { type: 'number', default: 12 },
     height: { type: 'number', default: 4.5 },
     lookAtHeight: { type: 'number', default: 1.5 },
     rotationSpeed: { type: 'number', default: 10 },
