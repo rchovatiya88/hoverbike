@@ -1,0 +1,323 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>A-Frame FPS Game Prototype</title>
+    <!-- A-Frame and YUKA libraries -->
+    <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/yuka@0.7.8/build/yuka.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.5.4/dist/aframe-extras.min.js"></script>
+    <!-- Add A-Frame Environment Component Script -->
+    <script src="https://unpkg.com/aframe-environment-component@1.3.9/dist/aframe-environment-component.min.js"></script>
+    <!-- Draco loader scripts -->
+    <!-- Three.js must come before DRACOLoader -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/loaders/DRACOLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.137.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="js/draco-decoder.js"></script>
+    <!-- Custom components -->
+    <script src="components/utils.js"></script>
+    <script src="components/hitbox-component.js"></script>
+    <script src="components/player-component.js"></script>
+    <script src="components/weapon-component.js"></script>
+    <script src="components/enemy-component.js"></script>
+    <script src="components/game-manager.js"></script>
+    <script src="components/simple-navmesh-constraint.js"></script>
+    <script src="components/model-camera-fix.js"></script>
+    <script src="components/third-person-camera.js"></script>
+    <script src="components/enhanced-third-person-camera.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            color: white;
+            font-size: 20px;
+            text-align: center;
+            line-height: 20px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        #game-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 2em;
+            text-align: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 1000;
+            font-family: Arial, sans-serif;
+            display: block;
+        }
+        
+        #start-button {
+            display: block;
+            margin: 20px auto 0;
+            padding: 10px 20px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+        }
+        
+        #start-button:hover {
+            background-color: #45a049;
+        }
+        
+        #health-display {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 200px;
+            height: 20px;
+            background-color: rgba(0, 0, 0, 0.5);
+            border: 2px solid white;
+            border-radius: 5px;
+            z-index: 100;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        
+        #health-bar {
+            width: 100%;
+            height: 100%;
+            background-color: #0f0;
+            transition: width 0.3s ease, background-color 0.3s ease;
+        }
+        
+        #ammo-display {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 1.5em;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        #score-ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            font-family: Arial, sans-serif;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        #damage-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 0, 0, 0);
+            pointer-events: none;
+            z-index: 100;
+            transition: background-color 0.1s ease-in-out;
+        }
+        
+        #player-ui {
+            position: relative;
+            /* Added to contain all UI elements */
+        }
+        
+        #control-hints {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        #control-hints h3 {
+            margin: 0 0 5px 0;
+        }
+        
+        #control-hints ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- UI Elements -->
+    <div id="crosshair">+</div>
+    <div id="player-ui">
+        <div id="health-display">
+            <div id="health-bar"></div>
+        </div>
+        <div id="ammo-display">30 / ∞</div>
+        <div id="control-hints" style="position: absolute; bottom: 20px; right: 20px; background: rgba(0,0,0,0.5); color: #fff; padding: 10px; border-radius: 5px; font-size: 14px;">
+            <h3 style="margin: 0 0 5px 0">Jetbike Controls</h3>
+            <ul style="margin: 0; padding-left: 20px">
+                <li>W/S: Forward/Back</li>
+                <li>A/D: Left/Right</li>
+                <li>Q/E: Up/Down</li>
+                <li>Shift: Boost</li>
+                <li>Mouse: Aim</li>
+                <li>R: Reset Position</li>
+            </ul>
+        </div>
+    </div>
+    <div id="score-ui">
+        <div>Level: <span id="level-value">1</span></div>
+        <div>Score: <span id="score-value">0</span></div>
+        <div>Enemies: <span id="enemies-value">5</span></div>
+    </div>
+    <div id="damage-overlay"></div>
+    <div id="game-message">
+        Welcome to Hover Jetbike Shooter!<br /> WASD to move, Q/E to ascend/descend, Shift to boost<br/> Mouse to aim, Click to shoot, R to reset position<br /><br />
+        <button id="start-button">Start Game</button>
+    </div>
+
+    <a-scene game-manager="enemyCount: 5; level: 1; spawnRadius: 15" vr-mode-ui="enabled: false" renderer="antialias: true; colorManagement: true; physicallyCorrectLights: true;">
+        <a-assets>
+            <a-asset-item id="jetbike-model" src="models/hoverbikewithavi.glb"></a-asset-item>
+            <!-- Commenting out missing assets to resolve 404 errors -->
+            <!-- <a-asset-item id="enemy-model" src="assets/enemy_drone.glb"></a-asset-item> -->
+            <!-- <a-asset-item id="obstacle-model" src="assets/obstacle_cube.glb"></a-asset-item> -->
+            <!-- <a-asset-item id="projectile-model" src="assets/projectile.glb"></a-asset-item> -->
+            <!-- <audio id="shoot-sound" src="sounds/shoot.wav" preload="auto"></audio> -->
+            <!-- <audio id="hit-sound" src="sounds/hit.wav" preload="auto"></audio> -->
+            <!-- <audio id="explode-sound" src="sounds/explosion.wav" preload="auto"></audio> -->
+            <!-- <audio id="empty-sound" src="sounds/empty.wav" preload="auto"></audio> -->
+            <!-- <audio id="reload-sound" src="sounds/reload.wav" preload="auto"></audio> -->
+
+        </a-assets>
+
+        <a-entity class="obstacle" gltf-model="#obstacle-model" position="-5 2 -10" scale="2 2 2"></a-entity>
+        <a-entity class="obstacle" gltf-model="#obstacle-model" position="10 5 -15" scale="3 3 3"></a-entity>
+        <a-entity class="obstacle" gltf-model="#obstacle-model" position="15 10 -20" scale="2.5 2.5 2.5"></a-entity>
+
+        <a-entity id="player" 
+                  gltf-model="#jetbike-model" 
+                  player-component="moveSpeed: 7; boostSpeed: 15; boostAcceleration: 70; damping: 0.95; health: 100; maxHealth: 100; hoverHeight: 1.5" 
+                  position="0 1.5 0"
+                  rotation="0 0 0">
+             <a-entity id="weapon-mount" position="0 0.5 -1"></a-entity> 
+             <a-cone id="forward-indicator" color="red" radius-bottom="0.1" radius-top="0" height="0.5" position="0 0.5 -1" rotation="-90 0 0" visible="false"></a-cone>
+
+             <!-- Camera attached directly to player for chase-cam view -->
+             <a-camera id="camera" 
+                       look-controls="enabled: true; pointerLockEnabled: true" 
+                       wasd-controls="enabled: false" 
+                       position="0 1.5 4"> <!-- Position relative to player: Up and Behind -->
+                 <!-- Weapon is child of camera -->
+                 <a-entity id="weapon" 
+                           weapon-component="damage: 25; cooldown: 0.5; automatic: true; ammo: 30; infiniteAmmo: false; projectileSpeed: 50; projectileSpread: 0.01; muzzleFlashDuration: 0.1; projectileModel: #projectile-model; fireSound: #shoot-sound; emptySound: #empty-sound; reloadSound: #reload-sound; reloadTime: 1.5" 
+                           position="0.3 -0.4 -0.6" 
+                           rotation="0 0 0" 
+                           scale="0.1 0.1 0.1">
+                     <a-light id="muzzle-flash" type="point" intensity="0" color="#FFA500" distance="2" decay="2"></a-light>
+                 </a-entity>
+             </a-camera>
+         </a-entity>
+
+        <!-- Environment using aframe-environment-component -->
+        <a-entity environment="preset: forest"></a-entity>
+        <!-- Default lights are removed/commented out as environment handles lighting -->
+
+    </a-scene>
+
+    <script>
+        document
+            .getElementById("start-button")
+            .addEventListener("click", function() {
+                document.getElementById("game-message").style.display = "none";
+
+                document.body.requestPointerLock =
+                    document.body.requestPointerLock ||
+                    document.body.mozRequestPointerLock ||
+                    document.body.webkitRequestPointerLock;
+                document.body.requestPointerLock();
+
+                const gameManager =
+                    document.querySelector("[game-manager]").components["game-manager"];
+                if (gameManager && gameManager.startGame) {
+                    gameManager.startGame();
+                }
+            });
+
+        document.addEventListener("pointerlockerror", function(event) {
+            console.error("Pointer lock error:", event);
+            const gameMessage = document.getElementById("game-message");
+            gameMessage.style.display = "block";
+            gameMessage.innerHTML =
+                'Error: Could not lock pointer. Please try again.<br><button id="retry-button">Retry</button>';
+            document
+                .getElementById("retry-button")
+                .addEventListener("click", function() {
+                    document.body.requestPointerLock();
+                    gameMessage.style.display = "none";
+                });
+        });
+
+        document.addEventListener("pointerlockchange", function() {
+            if (document.pointerLockElement === document.body) {
+                console.log("Pointer locked");
+            } else {
+                console.log("Pointer unlocked");
+                const gameManager =
+                    document.querySelector("[game-manager]");
+                const gameManagerComponent =
+                    gameManager && gameManager.components ?
+                    gameManager.components["game-manager"] :
+                    null;
+
+                if (
+                    gameManagerComponent &&
+                    gameManagerComponent.gameStarted
+                ) {
+                    const gameMessage =
+                        document.getElementById("game-message");
+                    gameMessage.style.display = "block";
+                    gameMessage.innerHTML =
+                        'Game Paused<br><button id="resume-button">Resume</button>';
+                    document
+                        .getElementById("resume-button")
+                        .addEventListener(
+                            "click",
+                            function() {
+                                document.body.requestPointerLock();
+                                gameMessage.style.display = "none";
+                            }, {
+                                once: true,
+                            },
+                        );
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
