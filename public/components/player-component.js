@@ -54,7 +54,27 @@ AFRAME.registerComponent('player-component', {
     // Add control hints to UI
     this.addControlHints();
 
+    // Position the hoverbike at the desired starting height
+    this.el.setAttribute('position', '0 1.5 0');
+    this.el.setAttribute('rotation', '0 0 0');
+
     console.log("Player component initialized");
+    
+    // Add event listener for model-loaded to fix any model position issues
+    this.el.addEventListener('model-loaded', this.onModelLoaded.bind(this));
+  },
+
+  onModelLoaded: function(evt) {
+    console.log("Model loaded:", evt);
+    
+    // Fix any positioning issues with the model
+    this.el.setAttribute('position', '0 1.5 0');
+    
+    // Make sure forward direction indicator is visible
+    const forwardIndicator = this.el.querySelector('#forward-indicator');
+    if (forwardIndicator) {
+      forwardIndicator.setAttribute('visible', 'true');
+    }
   },
 
   setupEventListeners: function() {
@@ -160,6 +180,20 @@ AFRAME.registerComponent('player-component', {
     if (event.code === 'ShiftLeft') {
       this.isBoosting = true;
     }
+    
+    // Reset position if R is pressed
+    if (event.code === 'KeyR') {
+      this.resetPosition();
+    }
+  },
+  
+  resetPosition: function() {
+    console.log('Resetting player position');
+    this.el.setAttribute('position', '0 1.5 0');
+    this.el.setAttribute('rotation', '0 0 0');
+    this.velocity.set(0, 0, 0);
+    this.acceleration.set(0, 0, 0);
+    this.moveDirection.set(0, 0, 0);
   },
 
   onKeyUp: function(event) {
@@ -271,14 +305,24 @@ AFRAME.registerComponent('player-component', {
     this.acceleration.set(0, 0, 0);
 
     // Apply movement force based on player input
-    if (this.moveDirection.length() > 0) {
-      // Normalize direction to prevent diagonal movement being faster
-      const normalizedDirection = this.moveDirection.clone().normalize();
+    if (this.moveDirection.length() > 0 || this.moveDirection.y !== 0) {
+      // Create a normalized direction vector
+      const normalizedDirection = new THREE.Vector3(this.moveDirection.x, this.moveDirection.y, this.moveDirection.z).normalize();
 
-      // Convert direction from local to world space
+      // Get the current rotation of the hoverbike
+      const rotation = this.el.object3D.rotation.y;
+      
+      // Create a rotation matrix
       const rotationMatrix = new THREE.Matrix4();
-      rotationMatrix.makeRotationY(this.el.object3D.rotation.y);
-      normalizedDirection.applyMatrix4(rotationMatrix);
+      rotationMatrix.makeRotationY(rotation);
+      
+      // Apply rotation only to X and Z (horizontal movement)
+      const horizontalDirection = new THREE.Vector3(normalizedDirection.x, 0, normalizedDirection.z);
+      horizontalDirection.applyMatrix4(rotationMatrix);
+      
+      // Combine with vertical movement (Y doesn't get rotated)
+      normalizedDirection.set(horizontalDirection.x, this.moveDirection.y, horizontalDirection.z);
+      normalizedDirection.normalize();
 
       // Apply movement force with potential boost
       const currentSpeed = this.isBoosting ? this.data.boostSpeed : this.data.speed;
@@ -336,6 +380,9 @@ AFRAME.registerComponent('player-component', {
     // Convert to seconds
     const deltaSeconds = deltaTime / 1000;
 
+    // Read keyboard inputs and set moveDirection
+    this.processInput();
+
     // Reset acceleration
     this.acceleration.set(0, 0, 0);
 
@@ -344,24 +391,46 @@ AFRAME.registerComponent('player-component', {
     const hoverOffset = Math.sin(this.hoverPhase) * this.data.hoverAmplitude;
     this.el.object3D.position.y += hoverOffset * deltaSeconds;
 
-    // Check if near objects for collision purposes
-    const raycaster = new THREE.Raycaster(
-      this.el.object3D.position,
-      new THREE.Vector3(0, -1, 0)
-    );
-    const intersections = raycaster.intersectObjects(
-      document.querySelector('a-scene').object3D.children,
-      true
-    );
-
-
+    // Update movement based on input
     this.updateMovement(deltaTime);
+    
+    // Update particles
     this.updateParticles(deltaTime);
+
+    // Apply movement - use direct object3D position for most accurate updates
+    const playerPosition = this.el.object3D.position;
+    playerPosition.x += this.velocity.x * deltaSeconds;
+    playerPosition.y += this.velocity.y * deltaSeconds;
+    playerPosition.z += this.velocity.z * deltaSeconds;
+
+    // Log position if it has changed significantly
+    if (time % 500 < 20) { // Log every half second
+      console.log('Player position:', playerPosition);
+      console.log('Player velocity:', this.velocity);
+    }
 
     // Check if player fell off the map
     if (this.el.object3D.position.y < -10) {
       this.onDamage({ detail: { damage: this.currentHealth } });
     }
+  },
+
+  processInput: function() {
+    // Reset move direction
+    this.moveDirection.set(0, 0, 0);
+    
+    // Forward/backward movement (Z-axis)
+    if (this.keys['KeyW']) this.moveDirection.z = -1;
+    else if (this.keys['KeyS']) this.moveDirection.z = 1;
+    
+    // Left/right movement (X-axis)
+    if (this.keys['KeyA']) this.moveDirection.x = -1;
+    else if (this.keys['KeyD']) this.moveDirection.x = 1;
+    
+    // Up/down movement (Y-axis) is handled in onKeyDown/onKeyUp
+    
+    // Check if any movement keys are pressed
+    this.isMoving = this.moveDirection.length() > 0 || this.moveDirection.y !== 0;
   },
 
   remove: function() {

@@ -23,14 +23,14 @@ AFRAME.registerComponent('position-debug', {
     
     if (!this.data.player || !this.data.camera) return;
     
-    // Get positions and rotations
-    const playerPos = this.data.player.getAttribute('position');
-    const playerRot = this.data.player.getAttribute('rotation');
-    const cameraRot = this.data.camera.getAttribute('rotation');
+    // Get positions and rotations - use object3D for most accurate data
+    const playerPos = this.data.player.object3D.position;
+    const playerRot = this.data.player.object3D.rotation;
+    const cameraRot = this.data.camera.object3D.rotation;
     
     // Update debug display
     this.playerPosEl.textContent = `X: ${playerPos.x.toFixed(2)}, Y: ${playerPos.y.toFixed(2)}, Z: ${playerPos.z.toFixed(2)}`;
-    this.playerRotEl.textContent = `X: ${playerRot.x.toFixed(2)}, Y: ${playerRot.y.toFixed(2)}, Z: ${playerRot.z.toFixed(2)}`;
-    this.cameraRotEl.textContent = `X: ${cameraRot.x.toFixed(2)}, Y: ${cameraRot.y.toFixed(2)}, Z: ${cameraRot.z.toFixed(2)}`;
+    this.playerRotEl.textContent = `X: ${(playerRot.x * (180/Math.PI)).toFixed(2)}, Y: ${(playerRot.y * (180/Math.PI)).toFixed(2)}, Z: ${(playerRot.z * (180/Math.PI)).toFixed(2)}`;
+    this.cameraRotEl.textContent = `X: ${(cameraRot.x * (180/Math.PI)).toFixed(2)}, Y: ${(cameraRot.y * (180/Math.PI)).toFixed(2)}, Z: ${(cameraRot.z * (180/Math.PI)).toFixed(2)}`;
   }
 });

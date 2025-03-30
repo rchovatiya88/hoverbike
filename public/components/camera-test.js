@@ -12,6 +12,9 @@ AFRAME.registerComponent('camera-test', {
       { position: '-12 4.5 0', rotation: '0 90 0', name: "Face West Wall", playerPos: '0 1.5 0', playerRot: '0 90 0' }
     ];
     
+    // Also define a reset position to go back to the center
+    this.resetPosition = { position: '0 4.5 12', rotation: '0 0 0', name: "Reset Position", playerPos: '0 1.5 0', playerRot: '0 0 0' };
+    
     console.log("Camera test component initialized. Press 1-4 to test different camera positions.");
     console.log("Press N to specifically test north wall orientation.");
   },
